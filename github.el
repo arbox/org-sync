@@ -26,31 +26,36 @@
 (defun buglist-write-buffer (url)
   (let ((bl (dl-json url)))
     (mapc 'bug-write-buffer bl))
-  t ;; hide huge dump in *scratch*
-)
+  t) ;; hide huge dump in *scratch*
+
 
 (defun buglist-to-element (url)
   (let ((bl (dl-json url)))
-    (mapcar 'bug-to-element bl))
-)
+    (mapcar 'bug-to-element bl)))
 
 (defun bug-write-buffer (b)
   "Insert bug B as a TODO in Org-mode syntax in current buffer."
   (insert (format "* %s %s\n%s\n\n"
                   (upcase (getv 'state b))
                   (getv 'title b)
-                  (getv 'body b)))
-)
+                  (getv 'body b))))
 
 (defun bug-to-element (b)
   "Returns bug B as a TODO element."
   (let ((title (getv 'title b))
-        (state (upcase (getv 'state b))))
+        (state (upcase (getv 'state b)))
+        (body (getv 'body b)))
     `(headline 
-      (:raw-value ,title :title ,title :level 1 
-                  :todo-type todo :todo-keyword ,state)))
-)
-
+      (:raw-value    ,title
+       :title        ,title
+       :level        1 
+       :todo-type    todo
+       :todo-keyword ,state)
+      (section 
+       nil 
+       (property-drawer 
+        (:properties (("prop" . "value"))))
+       (paragraph nil ,body)))))
 
 (defun dl-json-page (url)
   "Returns a cons of the parsed JSON object from URL and the next page URL."
@@ -78,8 +83,7 @@
       (goto-char header-end)
       (setq ret (cons (json-read) page-next))
       (kill-buffer)
-      ret
-)))
+      ret)))
 
 (defun dl-json (url)
   "Return a parsed JSON object of all the pages of URL."
@@ -94,6 +98,5 @@
            (setq url (cdr ret))
            (setq json (vconcat json data)))
 
-         json
-))
+         json))
 

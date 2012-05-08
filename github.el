@@ -1,6 +1,6 @@
 ;; simple tool that downloads buglist from GitHub bugtracker
 
-;; eval in scratch to test: 
+;; eval in scratch to test:
 
 ;; fast (small repo):
 
@@ -21,17 +21,23 @@
 (require 'url)
 
 (defun getv (key alist)
+  "Returns the value of KEY in ALIST."
   (cdr (assoc key alist)))
 
 (defun buglist-write-buffer (url)
+  "Inserts buglist at URL in current buffer."
   (let ((bl (dl-json url)))
     (mapc 'bug-write-buffer bl))
   t) ;; hide huge dump in *scratch*
 
 
 (defun buglist-to-element (url)
-  (let ((bl (dl-json url)))
-    (mapcar 'bug-to-element bl)))
+  "Returns buglist at URL as an element."
+    (let ((buglist (mapcar 'bug-to-element (dl-json url))))
+      `(headline (:level 1 :title ("Buglist"))
+                 (section nil
+                          (property-drawer (:properties (("url" . ,url)))))
+                 ,@buglist)))
 
 (defun bug-write-buffer (b)
   "Insert bug B as a TODO in Org-mode syntax in current buffer."
@@ -40,33 +46,36 @@
                   (getv 'title b)
                   (getv 'body b))))
 
+
 (defun bug-to-element (b)
   "Returns bug B as a TODO element."
-  (let ((title (getv 'title b))
-        (state (upcase (getv 'state b)))
-        (body (getv 'body b)))
-    `(headline 
-      (:raw-value    ,title
-       :title        ,title
-       :level        1 
-       :todo-type    todo
-       :todo-keyword ,state)
-      (section 
-       nil 
-       (property-drawer 
-        (:properties (("prop" . "value"))))
-       (paragraph nil ,body)))))
+  `(headline
+    (:raw-value    ,(getv 'title b)
+     :title        ,(getv 'title b)
+     :level        2
+     :todo-type    todo
+     :todo-keyword ,(upcase (getv 'state b)))
+     (section
+      nil
+      (property-drawer
+       (:properties
+        (("id" . ,(getv 'number b)))))
+      (paragraph nil ,(getv 'body b)))))
+
+(defun append-max-page (url)
+  "Returns same URL with the maximum element-per-page param allowed by github."
+  (if (string-match-p "per_page" url)
+      url
+    (concat url (if (string-match-p "\\?" url) nil "?") "&per_page=100")))
 
 (defun dl-json-page (url)
   "Returns a cons of the parsed JSON object from URL and the next page URL."
-  (let ((download-buffer (url-retrieve-synchronously url))
+  (let ((download-buffer (url-retrieve-synchronously (append-max-page url)))
         page-next
         header-end
         ret)
 
-    (save-excursion
-      (set-buffer download-buffer)
-
+    (with-current-buffer download-buffer
       ;; get HTTP header end position
       (goto-char (point-min))
       (re-search-forward "^$" nil 'move)
@@ -75,7 +84,7 @@
 
       ;; get next page url
       (goto-char (point-min))
-      (when (re-search-forward 
+      (when (re-search-forward
              "<\\(https://api.github.com.+?page=[0-9]+.*?\\)>; rel=\"next\""
              header-end t)
         (setq page-next (match-string 1)))
@@ -99,4 +108,3 @@
            (setq json (vconcat json data)))
 
          json))
-

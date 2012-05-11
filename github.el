@@ -55,12 +55,12 @@
      :level        2
      :todo-type    todo
      :todo-keyword ,(upcase (getv 'state b)))
-     (section
-      nil
-      (property-drawer
-       (:properties
-        (("id" . ,(getv 'number b)))))
-      (paragraph nil ,(getv 'body b)))))
+    (section
+     nil
+     (property-drawer
+      (:properties
+       (("id" . ,(getv 'number b)))))
+     (paragraph nil ,(getv 'body b)))))
 
 (defun append-max-page (url)
   "Returns same URL with the maximum element-per-page param allowed by github."
@@ -108,3 +108,72 @@
            (setq json (vconcat json data)))
 
          json))
+
+
+(defun org-replace-buglist (elem buglist)
+  "Replace first occurence of the buglist with the same url as
+BUGLIST in ELEM by BUGLIST."
+  (let* ((url (org-headline-url buglist))
+         (old (org-find-buglist elem url)))
+    (when (and url old buglist)
+      (setcar old (car buglist))
+      (setcdr old (cdr buglist))
+      elem)))
+
+
+(defun org-headline-url (e)
+  "Returns the url of the buglist in headline E."
+  (cdr (assoc "url"
+              (org-element-property
+               :properties
+               (car (org-element-contents
+                     (car (org-element-contents e))))))))
+
+(defun org-find-buglist (elem url)
+  "Returns first occurence of a headline with a url propertie of URL
+in element ELEM.
+
+If URL is nil, returns first headline with a url properties."
+  (let ((type (org-element-type elem))
+        (contents (org-element-contents elem)))
+    (cond
+     ;; if it's a buglist with the right url, return it
+     ((and (eq type 'headline)
+           (if url (string= url (org-headline-url elem)) (org-headline-url elem)))
+      elem)
+     ;; else if it contains elements, look recursively in it
+     ((or (eq type 'org-data) (memq type org-element-greater-elements))
+      (let (found)
+        (catch 'exit
+          (mapc (lambda (e)
+                  (when (setq found (org-find-buglist e url))
+                    (throw 'exit found)))
+                contents)
+          found)))
+     ;; terminal case
+     (t
+      nil))))
+
+(defun org-sync-import (url)
+  "Fetch and insert bugs from URL."
+  (interactive "sURL:")
+  (save-excursion
+    (insert (org-element-interpret-data
+             `(org-data nil ,(buglist-to-element url))))))
+
+(defun org-sync-pull ()
+  "Update first buglist in current buffer."
+  (interactive)
+  ;; since we replace the whole buffer, save-excusion doesn't work so
+  ;; we manually (re)store the point
+  (let* ((oldpoint (point))
+         (doc (org-element-parse-buffer))
+         (oldbl (org-find-buglist doc nil))
+         (url (org-headline-url oldbl))
+         (newbl (buglist-to-element url)))
+
+    (org-replace-buglist doc newbl)
+    (delete-region (point-min) (point-max))
+    (goto-char (point-min))
+    (insert (org-element-interpret-data doc))
+    (goto-char oldpoint)))

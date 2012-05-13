@@ -1,10 +1,10 @@
 ;; simple tool that downloads buglist from GitHub bugtracker
 
 ;; fast (small repo):
-;; M-x os-sync-import RET https://api.github.com/repos/octocat/Hello-World/issues RET
+;; M-x os-sync-import RET github.com/octocat/Hello-World RET
 
 ;; slow because of synchroneous download (~4sec):
-;; M-x os-import RET https://api.github.com/repos/joyent/node/ RET
+;; M-x os-import RET github.com/joyent/node RET
 
 ;; buglist data structure
 

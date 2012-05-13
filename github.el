@@ -221,41 +221,100 @@ BUGLIST in ELEM by BUGLIST."
 (defun os-headline-url (e)
   "Returns the url of the buglist in headline E."
   (cdr (assoc "url"
-              (os-element-property
+              (org-element-property
                :properties
-               (car (os-element-contents
-                     (car (os-element-contents e))))))))
+               (car (org-element-contents
+                     (car (org-element-contents e))))))))
 
-(defun os-find-buglist (elem url)
-  "Returns first occurence of a headline with a url propertie of URL
-in element ELEM.
+(defun os-buglist-headline-p (elem)
+  "Return t if ELEM is a buglist headline."
+  (when (and 
+         (eq (org-element-type elem) 'headline)
+         (stringp (os-headline-url elem)))
+    t))
 
-If URL is nil, returns first headline with a url properties."
+(defun os-headline-to-buglist (h)
+  "Return headline H as a buglist."
+  (let* ((alist (org-element-property
+                 :properties
+                 (car (org-element-contents
+                       (car (org-element-contents h))))))
+         (title (org-element-property :title h))
+         (url (cdr (assoc "url" alist))))
+    `(:title ,title
+             :url ,url
+             :bugs ,(mapcar
+                     'os-headline-to-bug
+                     (nthcdr 1 (org-element-contents h))))))
+
+(defun os-headline-to-bug (h)
+  "Return headline H as a bug."
+  ;; value of "sym" in alist a
+  (flet ((va (k a) (cdr (assoc (symbol-name k) a)))
+         (str-to-n (x) (if (stringp x) (string-to-number x) -1)))
+    (let* ((titlecons (org-element-property :title h))
+           (title (if (consp titlecons) (car titlecons) titlecons))
+           (status (if (string= "OPEN" 
+                                (org-element-property :todo-keyword h))
+                       'open
+                     'closed))
+           (desc (org-element-contents (nth 1 (org-element-contents h))))
+           (headline-alist (org-element-property
+                            :properties
+                            (car 
+                             (org-element-contents
+                              (car (org-element-contents h))))))           
+           (id (str-to-n (va 'id  headline-alist)))
+           (priority (str-to-n (va 'priority headline-alist)))
+           (tags-str (va 'tags headline-alist))
+           (tags (when (stringp tags-str) (read tags-str)))
+           (author (va 'author headline-alist))
+           (assignee (va 'assignee headline-alist))
+           (dtime (va 'date-deadline headline-alist))
+           (ctime (va 'date-creation headline-alist))
+           (mtime (va 'date-modification headline-alist))
+           (backend-plist (mapcar (lambda (x)
+                                    (cons
+                                     (os-propertize x)
+                                     (va x headline-alist)))
+                                  os-github-bug-properties)))
+      `(:id ,id
+            :status ,status
+            :title ,title
+            :priority ,priority
+            :tags ,tags
+            :author ,author
+            :assignee ,assignee
+            :date-deadline ,dtime
+            :date-creation ,ctime
+            :date-modification ,mtime
+            ,@backend-plist))))               
+
+
+(defun os-find-buglists (elem)
+  "Return every buglist headlines in ELEM."
   (let ((type (org-element-type elem))
         (contents (org-element-contents elem)))
     (cond
-     ;; if it's a buglist with the right url, return it
-     ((and (eq type 'headline)
-           (if url
-               (string= url (os-headline-url elem))
-             (os-headline-url elem)))
+     ;; if it's a buglist, return it
+     ((os-buglist-headline-p elem)
       elem)
      ;; else if it contains elements, look recursively in it
      ((or (eq type 'org-data) (memq type org-element-greater-elements))
-      (let (found)
-        (catch 'exit
-          (mapc (lambda (e)
-                  (when (setq found (os-find-buglist e url))
-                    (throw 'exit found)))
-                contents)
-          found)))
+      (let (buglist)
+        (mapc (lambda (e)
+                (let ((h (os-find-buglists e)))
+                  (when h
+                    (setq buglist (cons h buglist)))))
+              contents)
+        buglist))
      ;; terminal case
      (t
       nil))))
 
 (defun os-import (url)
   "Fetch and insert bugs from URL."
-  (interactive "sURL:")
+  (interactive "sURL: ")
   (let* ((buglist (os-github-fetch-buglist url))
          (elem (os-buglist-to-element buglist)))
     (save-excursion

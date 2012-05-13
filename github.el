@@ -1,27 +1,27 @@
 ;; simple tool that downloads buglist from GitHub bugtracker
 
 ;; fast (small repo):
-;; M-x org-sync-import RET https://api.github.com/repos/octocat/Hello-World/issues RET
+;; M-x os-sync-import RET https://api.github.com/repos/octocat/Hello-World/issues RET
 
 ;; slow because of synchroneous download (~4sec):
-;; M-x org-sync-import RET https://api.github.com/repos/joyent/node/ RET
+;; M-x os-import RET https://api.github.com/repos/joyent/node/ RET
 
 ;; buglist data structure
 
 ;; '(:title "My buglist"
 ;;   :url "http://github.com/repos/octocat/Hello-World"
 ;;   :bugs (BUGS...))
-  
+
 
 ;; bug data structure
-;; '(:id 3 
+;; '(:id 3
 ;;   :status 'open ;; or 'closed
 ;;   :title "foo" :desc "blah"
 ;;   :priority 0 ;; up to 4 for max priority
 ;;   :tags ("a" "b" "c")
 ;;   :author "Aurélien"
 ;;   :assignee "Foo"
-  
+
 ;;   ;; dates are in ISO-8601
 ;;   :date-deadline "2011-04-12T23:09:31Z"
 ;;   :date-creation "2011-04-10T20:09:31Z"
@@ -31,17 +31,16 @@
 ;;   ;; ...
 ;;   )
 
-;; org-sync-pull is broken atm
+;; os-pull is broken atm
 
 (require 'json)
 (require 'url)
 
-
-(defconst org-sync-buglist-properties
+(defconst os-buglist-properties
   '(title url)
   "List of shared buglist properties.")
 
-(defconst org-sync-bug-properties 
+(defconst os-bug-properties
   '(id status author title priority tags date-deadline
        date-creation date-modification author assignee desc)
   "List of shared bug properties.")
@@ -58,9 +57,9 @@
   "Return sym as a property i.e. prefixed with :."
   (intern (concat ":" (symbol-name sym))))
 
-(defun os-get-prop (key bl)
-  "Return value of the property KEY in buglist BL."
-  (plist-get bl key))
+(defun os-get-prop (key b)
+  "Return value of the property KEY in buglist or bug B."
+  (plist-get b key))
 
 ;; XXX: per_page defconst
 (defun os-github-buglist-url (repo)
@@ -69,25 +68,25 @@
 Return the first page url from REPO url or nil if REPO is
 invalid."
   (when (string-match "github.com/\\(?:repos/\\)?\\([^/]+/[^/]+\\)" repo)
-    (concat "https://api.github.com/repos/" (match-string 1 repo) 
+    (concat "https://api.github.com/repos/" (match-string 1 repo)
             "/issues?per_page=100")))
 
 (defun os-github-fetch-json (url)
   "Return a parsed JSON object of all the pages of URL."
-  (let* ((ret (os-github-json-page url))
+  (let* ((ret (os-github-fetch-json-page url))
          (data (car ret))
          (url (cdr ret))
          (json data))
 
          (while url
-           (setq ret (os-github-json-page url))
+           (setq ret (os-github-fetch-json-page url))
            (setq data (car ret))
            (setq url (cdr ret))
            (setq json (vconcat json data)))
 
          json))
 
-(defun os-github-json-page (url)
+(defun os-github-fetch-json-page (url)
   "Return a cons (JSON object from URL . next page url)."
   (let ((download-buffer (url-retrieve-synchronously url))
         page-next
@@ -124,7 +123,7 @@ invalid."
   (let* ((url (os-github-buglist-url repo))
          (json (os-github-fetch-json url))
          (title (concat "Bugs of " (os-github-repo-name url))))
-    
+
     `(:title ,title
              :url ,url
              :bugs ,(mapcar 'os-github-json-to-bug json))))
@@ -143,10 +142,10 @@ invalid."
            (milestone (v 'milestone))
            (dtime (va 'description milestone))
            (mtime (v 'updated_at))
-           (tags (mapcar (lambda (e) 
+           (tags (mapcar (lambda (e)
                            (va 'name e)) (v 'labels)))
            (priority 2))
- 
+
       `(:id ,id
             :author ,author
             :assignee ,assignee
@@ -165,10 +164,10 @@ invalid."
     (let* ((elist (mapcar 'os-bug-to-element (os-get-prop :bugs bl)))
            (title (os-get-prop :title bl))
            (url (os-get-prop :url bl))
-           (backend-props (os-bug-plist os-github-buglist-properties bl)))
-      `(headline 
+           (backend-props (os-plist os-github-buglist-properties bl)))
+      `(headline
         (:level 1 :title (,title))
-        (section 
+        (section
          nil
          (property-drawer (:properties (("url" . ,url) ,@backend-props))))
         ,@elist)))
@@ -180,55 +179,54 @@ invalid."
             (delq x final)) minus)
     final))
 
-(defun os-bug-plist (properties bug)
-  "Return plist of PROPERTIES in BUG."
+(defun os-plist (properties bug &optional prefix)
+  "Return plist of PROPERTIES in bug or buglist BUG.
+
+Prefix property name with : when PREFIX is non-nil."
   (mapcar (lambda (x)
             (let ((p (os-propertize x)))
-              (cons x (os-get-prop p bug)))) properties))
+              (cons (if prefix p x) (os-get-prop p bug)))) properties))
 
-
- (defun os-bug-to-element (b)
+(defun os-bug-to-element (b)
   "Returns bug B as a TODO element."
   (let* ((skip '(title status desc))
-         (props (os-filter-list org-sync-bug-properties skip))
-         (plist (os-bug-plist props b))
-         (backend-plist (os-bug-plist os-github-bug-properties b)))
+         (props (os-filter-list os-bug-properties skip))
+         (plist (os-plist props b))
+         (backend-plist (os-plist os-github-bug-properties b)))
 
-           (mapc (lambda (x) (delq x plist)) skip)
-           
-  `(headline
-    (:title ,(os-get-prop :title b)
-            :level 2
-            :todo-type todo
-            :todo-keyword ,(upcase (symbol-name (os-get-prop :status b))))
+    `(headline
+      (:title ,(os-get-prop :title b)
+              :level 2
+              :todo-type todo
+              :todo-keyword ,(upcase (symbol-name (os-get-prop :status b))))
 
-    (section
-     nil
-     (property-drawer
-      (:properties (,@plist ,@backend-plist)))
-     (paragraph nil ,(os-get-prop :desc b))))))
+      (section
+       nil
+       (property-drawer
+        (:properties (,@plist ,@backend-plist)))
+       (paragraph nil ,(os-get-prop :desc b))))))
 
 
-(defun org-replace-buglist (elem buglist)
+(defun os-replace-buglist (elem buglist)
   "Replace first occurence of the buglist with the same url as
 BUGLIST in ELEM by BUGLIST."
-  (let* ((url (org-headline-url buglist))
-         (old (org-find-buglist elem url)))
+  (let* ((url (os-headline-url buglist))
+         (old (os-find-buglist elem url)))
     (when (and url old buglist)
       (setcar old (car buglist))
       (setcdr old (cdr buglist))
       elem)))
 
 
-(defun org-headline-url (e)
+(defun os-headline-url (e)
   "Returns the url of the buglist in headline E."
   (cdr (assoc "url"
-              (org-element-property
+              (os-element-property
                :properties
-               (car (org-element-contents
-                     (car (org-element-contents e))))))))
+               (car (os-element-contents
+                     (car (os-element-contents e))))))))
 
-(defun org-find-buglist (elem url)
+(defun os-find-buglist (elem url)
   "Returns first occurence of a headline with a url propertie of URL
 in element ELEM.
 
@@ -238,16 +236,16 @@ If URL is nil, returns first headline with a url properties."
     (cond
      ;; if it's a buglist with the right url, return it
      ((and (eq type 'headline)
-           (if url 
-               (string= url (org-headline-url elem))
-             (org-headline-url elem)))
+           (if url
+               (string= url (os-headline-url elem))
+             (os-headline-url elem)))
       elem)
      ;; else if it contains elements, look recursively in it
      ((or (eq type 'org-data) (memq type org-element-greater-elements))
       (let (found)
         (catch 'exit
           (mapc (lambda (e)
-                  (when (setq found (org-find-buglist e url))
+                  (when (setq found (os-find-buglist e url))
                     (throw 'exit found)))
                 contents)
           found)))
@@ -255,7 +253,7 @@ If URL is nil, returns first headline with a url properties."
      (t
       nil))))
 
-(defun org-sync-import (url)
+(defun os-import (url)
   "Fetch and insert bugs from URL."
   (interactive "sURL:")
   (let* ((buglist (os-github-fetch-buglist url))
@@ -264,18 +262,18 @@ If URL is nil, returns first headline with a url properties."
       (insert (org-element-interpret-data
                `(org-data nil ,elem))))))
 
-(defun org-sync-pull ()
+(defun os-pull ()
   "Update first buglist in current buffer."
   (interactive)
   ;; since we replace the whole buffer, save-excusion doesn't work so
   ;; we manually (re)store the point
   (let* ((oldpoint (point))
          (doc (org-element-parse-buffer))
-         (oldbl (org-find-buglist doc nil))
-         (url (org-headline-url oldbl))
+         (oldbl (os-find-buglist doc nil))
+         (url (os-headline-url oldbl))
          (newbl (buglist-to-element url)))
 
-    (org-replace-buglist doc newbl)
+    (os-replace-buglist doc newbl)
     (delete-region (point-min) (point-max))
     (goto-char (point-min))
     (insert (org-element-interpret-data doc))

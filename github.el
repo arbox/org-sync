@@ -1,10 +1,13 @@
 ;; simple tool that downloads buglist from GitHub bugtracker
 
 ;; fast (small repo):
-;; M-x os-sync-import RET github.com/octocat/Hello-World RET
+;; M-x os-import RET github.com/octocat/Hello-World RET
 
 ;; slow because of synchroneous download (~4sec):
 ;; M-x os-import RET github.com/joyent/node RET
+
+;; update every buglist in current document
+;; M-x os-pull
 
 ;; buglist data structure
 
@@ -31,8 +34,8 @@
 ;;   ;; ...
 ;;   )
 
-;; os-pull is broken atm
-
+(require 'org-element)
+(require 'cl)
 (require 'json)
 (require 'url)
 
@@ -61,6 +64,12 @@
   "Return value of the property KEY in buglist or bug B."
   (plist-get b key))
 
+
+(defun os-github-user-repo-from-url (url)
+  "Return a cons (username . repo-name) extracted from URL."
+  (when (string-match "github.com/\\(?:repos/\\)?\\([^/]+\\)/\\([^/]+\\)" url)
+    (list (match-string 1 url) (match-string 2 url))))
+
 ;; XXX: per_page defconst
 (defun os-github-buglist-url (repo)
   "Return the first url to fetch bugs from REPO.
@@ -78,13 +87,13 @@ invalid."
          (url (cdr ret))
          (json data))
 
-         (while url
-           (setq ret (os-github-fetch-json-page url))
-           (setq data (car ret))
-           (setq url (cdr ret))
-           (setq json (vconcat json data)))
+    (while url
+      (setq ret (os-github-fetch-json-page url))
+      (setq data (car ret))
+      (setq url (cdr ret))
+      (setq json (vconcat json data)))
 
-         json))
+    json))
 
 (defun os-github-fetch-json-page (url)
   "Return a cons (JSON object from URL . next page url)."
@@ -111,6 +120,49 @@ invalid."
       (setq ret (cons (json-read) page-next))
       (kill-buffer)
       ret)))
+
+
+(defun os-github-send-buglist (buglist)
+  "Send a BUGLIST on the bugtracker."
+  (let* ((url (os-get-prop :url buglist))
+         (ret (os-github-user-repo-from-url url))
+         (user (car ret))
+         (repo (cdr ret))
+         (new-url  (concat "https://api.github.com/repos/" user "/" repo "/issues"))
+         (modif-url (concat new-url "/")))
+    (mapc (lambda (b)
+            (let ((id (os-get-prop :id b))
+                  (data (os-github-bug-to-json b)))
+              (if (= id -1)
+                  ;; new bug
+                  (os-github-request "POST" new-url data)
+                ;; update bug
+                (os-github-request
+                 "PATCH"
+                 (concat modif-url (number-to-string id))
+                 data)))) buglist)))
+
+
+(defun os-github-request (method url &optional data auth)
+  "Send HTTP request at URL using METHOD with DATA.
+AUTH is a cons (\"user\" . \"pwd\"). Return the server
+decoded response in JSON."
+  (let* ((url-request-method method)
+         (url-request-data data)
+         (buf))
+
+    (if (consp auth)
+        ;; dynamically bind auth related vars
+        (let* ((str (concat (car auth) ":" (cdr auth)))
+               (encoded (base64-encode-string str))
+               (login `(("api.github.com:443" ("Github API" . ,encoded))))
+               (url-basic-auth-storage 'login))
+          (setq buf (url-retrieve-synchronously url)))
+      ;; nothing more to bind
+      (setq buf (url-retrieve-synchronously url)))
+    (with-current-buffer buf
+      (goto-char url-http-end-of-headers)
+      (prog1 (json-read) (kill-buffer)))))
 
 (defun os-github-repo-name (url)
   "Return the name of the repo at URL."
@@ -159,18 +211,27 @@ invalid."
             :date-modification ,mtime))))
 
 
+(defun os-github-bug-to-json (bug)
+  "Return BUG as JSON."
+  (json-encode
+   `((title . ,(os-get-prop :title bug))
+     (body . ,(os-get-prop :desc bug))
+     (assignee . ,(os-get-prop :assignee bug))
+     (state . ,(symbol-name (os-get-prop :status bug)))
+     (labels . [ ,@(os-get-prop :tags bug) ]))))
+
 (defun os-buglist-to-element (bl)
   "Returns buglist BL as an element."
-    (let* ((elist (mapcar 'os-bug-to-element (os-get-prop :bugs bl)))
-           (title (os-get-prop :title bl))
-           (url (os-get-prop :url bl))
-           (backend-props (os-plist os-github-buglist-properties bl)))
-      `(headline
-        (:level 1 :title (,title))
-        (section
-         nil
-         (property-drawer (:properties (("url" . ,url) ,@backend-props))))
-        ,@elist)))
+  (let* ((elist (mapcar 'os-bug-to-element (os-get-prop :bugs bl)))
+         (title (os-get-prop :title bl))
+         (url (os-get-prop :url bl))
+         (backend-props (os-plist os-github-buglist-properties bl)))
+    `(headline
+      (:level 1 :title (,title))
+      (section
+       nil
+       (property-drawer (:properties (("url" . ,url) ,@backend-props))))
+      ,@elist)))
 
 (defun os-filter-list (list minus)
   "Return a copy of LIST without elements in MINUS."
@@ -228,7 +289,7 @@ BUGLIST in ELEM by BUGLIST."
 
 (defun os-buglist-headline-p (elem)
   "Return t if ELEM is a buglist headline."
-  (when (and 
+  (when (and
          (eq (org-element-type elem) 'headline)
          (stringp (os-headline-url elem)))
     t))
@@ -254,16 +315,16 @@ BUGLIST in ELEM by BUGLIST."
          (str-to-n (x) (if (stringp x) (string-to-number x) -1)))
     (let* ((titlecons (org-element-property :title h))
            (title (if (consp titlecons) (car titlecons) titlecons))
-           (status (if (string= "OPEN" 
+           (status (if (string= "OPEN"
                                 (org-element-property :todo-keyword h))
                        'open
                      'closed))
            (desc (org-element-contents (nth 1 (org-element-contents h))))
            (headline-alist (org-element-property
                             :properties
-                            (car 
+                            (car
                              (org-element-contents
-                              (car (org-element-contents h))))))           
+                              (car (org-element-contents h))))))
            (id (str-to-n (va 'id  headline-alist)))
            (priority (str-to-n (va 'priority headline-alist)))
            (tags-str (va 'tags headline-alist))
@@ -288,8 +349,7 @@ BUGLIST in ELEM by BUGLIST."
             :date-deadline ,dtime
             :date-creation ,ctime
             :date-modification ,mtime
-            ,@backend-plist))))               
-
+            ,@backend-plist))))
 
 (defun os-find-buglists (elem)
   "Return every buglist headlines in ELEM."
@@ -321,19 +381,36 @@ BUGLIST in ELEM by BUGLIST."
       (insert (org-element-interpret-data
                `(org-data nil ,elem))))))
 
-(defun os-pull ()
-  "Update first buglist in current buffer."
-  (interactive)
-  ;; since we replace the whole buffer, save-excusion doesn't work so
-  ;; we manually (re)store the point
-  (let* ((oldpoint (point))
-         (doc (org-element-parse-buffer))
-         (oldbl (os-find-buglist doc nil))
-         (url (os-headline-url oldbl))
-         (newbl (buglist-to-element url)))
+;; dumb merge: overwrite
+(defun os-merge-buglist (local remote)
+  "Return a buglist merged from buglist LOCAL & REMOTE."
+  `(:title ,(os-get-prop :title local) ;; always keep local title
+           :url ,(os-get-prop :url local)
+           :bugs ,(os-get-prop :bugs remote)))
 
-    (os-replace-buglist doc newbl)
-    (delete-region (point-min) (point-max))
-    (goto-char (point-min))
-    (insert (org-element-interpret-data doc))
-    (goto-char oldpoint)))
+(defun os-push (buglist)
+  "Send the new BUGLIST to the bugtracker."
+  (os-github-send-buglist buglist))
+
+(defun os-pull ()
+  "Update buglists in current buffer."
+  (interactive)
+  (let* ((local-doc (org-element-parse-buffer))
+         (local-headlines (os-find-buglists local-doc))
+         (local-buglists (mapcar 'os-headline-to-buglist local-headlines))
+         (local-urls (mapcar (lambda (x) (os-get-prop :url x)) local-buglists))
+         (remote-buglists (mapcar 'os-github-fetch-buglist local-urls))
+         (merged-buglists (mapcar* 'os-merge-buglist local-buglists remote-buglists))
+         (merged-headlines (mapcar 'os-buglist-to-element merged-buglists)))
+
+    ;; replace headlines in local-doc
+    (mapcar* (lambda (a b) (setf (car a) (car b) (cdr a) (cdr b)))
+             local-headlines merged-headlines)
+
+    ;; since we replace the whole buffer, save-excusion doesn't work so
+    ;; we manually (re)store the point
+    (let ((oldpoint (point)))
+      (delete-region (point-min) (point-max))
+      (goto-char (point-min))
+      (insert (org-element-interpret-data local-doc))
+      (goto-char oldpoint))))

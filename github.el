@@ -1,5 +1,7 @@
 ;; simple tool that downloads buglist from GitHub bugtracker
 
+;; >>> YOU NEED: "#+TODO: OPEN | CLOSED" <<<
+
 ;; fast (small repo):
 ;; M-x os-import RET github.com/octocat/Hello-World RET
 
@@ -15,11 +17,12 @@
 ;;   :url "http://github.com/repos/octocat/Hello-World"
 ;;   :bugs (BUGS...))
 
-
 ;; bug data structure
 ;; '(:id 3
 ;;   :status 'open ;; or 'closed
-;;   :title "foo" :desc "blah"
+;;   :deletep nil
+;;   :title "foo"
+;;   :desc "blah"
 ;;   :priority 0 ;; up to 4 for max priority
 ;;   :tags ("a" "b" "c")
 ;;   :author "Aurélien"
@@ -63,7 +66,6 @@
 (defun os-get-prop (key b)
   "Return value of the property KEY in buglist or bug B."
   (plist-get b key))
-
 
 (defun os-github-user-repo-from-url (url)
   "Return a cons (username . repo-name) extracted from URL."
@@ -133,14 +135,21 @@ invalid."
     (mapc (lambda (b)
             (let ((id (os-get-prop :id b))
                   (data (os-github-bug-to-json b)))
-              (if (= id -1)
-                  ;; new bug
-                  (os-github-request "POST" new-url data)
+              (cond
+               ((or (null id) (= id -1))
+                ;; new bug
+                (os-github-request "POST" new-url data))
+
+               ((os-get-prop :deletep b)
+                ;; delete bug
+                (os-github-request "DELETE"
+                                   (concat modif-url (number-to-string id))))
+               (t
                 ;; update bug
                 (os-github-request
                  "PATCH"
                  (concat modif-url (number-to-string id))
-                 data)))) buglist)))
+                 data)))) buglist))))
 
 
 (defun os-github-request (method url &optional data auth)
@@ -187,7 +196,7 @@ decoded response in JSON."
     (let* ((id (v 'number))
            (stat (if (string= (v 'state) "open") 'open 'closed))
            (title (v 'title))
-           (desc  (v 'body))
+           (desc  (replace-regexp-in-string "\r\n" "\n" (v 'body)))
            (author (va 'login (v 'user)))
            (assignee (va 'login (v 'assignee)))
            (ctime (v 'created_at))
@@ -250,7 +259,7 @@ Prefix property name with : when PREFIX is non-nil."
 
 (defun os-bug-to-element (b)
   "Returns bug B as a TODO element."
-  (let* ((skip '(title status desc))
+  (let* ((skip '(title status desc deletep))
          (props (os-filter-list os-bug-properties skip))
          (plist (os-plist props b))
          (backend-plist (os-plist os-github-bug-properties b)))
@@ -319,7 +328,8 @@ BUGLIST in ELEM by BUGLIST."
                                 (org-element-property :todo-keyword h))
                        'open
                      'closed))
-           (desc (org-element-contents (nth 1 (org-element-contents h))))
+           (deletep (when (string= "DELETE" (org-element-property :todo-keyword h))))
+           (desc (org-element-interpret-data (nthcdr 1 (org-element-contents (car (org-element-contents h))))))
            (headline-alist (org-element-property
                             :properties
                             (car
@@ -328,7 +338,8 @@ BUGLIST in ELEM by BUGLIST."
            (id (str-to-n (va 'id  headline-alist)))
            (priority (str-to-n (va 'priority headline-alist)))
            (tags-str (va 'tags headline-alist))
-           (tags (when (stringp tags-str) (read tags-str)))
+           (tags (when (stringp tags-str)
+                   (mapcar 'symbol-name (read tags-str))))
            (author (va 'author headline-alist))
            (assignee (va 'assignee headline-alist))
            (dtime (va 'date-deadline headline-alist))
@@ -340,7 +351,9 @@ BUGLIST in ELEM by BUGLIST."
                                      (va x headline-alist)))
                                   os-github-bug-properties)))
       `(:id ,id
+            :desc ,desc
             :status ,status
+            :deletep ,deletep
             :title ,title
             :priority ,priority
             :tags ,tags
@@ -381,18 +394,96 @@ BUGLIST in ELEM by BUGLIST."
       (insert (org-element-interpret-data
                `(org-data nil ,elem))))))
 
-;; dumb merge: overwrite
+(defun os-get-bug-id (buglist id)
+  "Return bug ID from BUGLIST."
+  (catch :exit
+    (mapc (lambda (x)
+            (when (= (os-get-prop :id x) id)
+              (throw :exit x)))
+          (os-get-prop :bugs buglist))))
+
 (defun os-merge-buglist (local remote)
   "Return a buglist merged from buglist LOCAL & REMOTE."
-  `(:title ,(os-get-prop :title local) ;; always keep local title
-           :url ,(os-get-prop :url local)
-           :bugs ,(os-get-prop :bugs remote)))
+  (let*
+      ;; update local bugs
+      ((local-bugs
+        (append
+
+         (mapcar (lambda (loc)
+                   (let* ((id (os-get-prop :id loc))
+                          (rem (os-get-bug-id remote id)))
+                     (cond
+                      ((null rem)
+                       (list loc))
+                      ((os-bug-equalp loc rem)
+                       (list rem))
+                      (t ;; insert both
+                       (list loc rem)))))
+                 (os-get-prop :bugs local))))
+       ;; add new remote bugs
+       (remote-bugs
+        (append
+         (mapcar (lambda (rem)
+                   (let* ((id (os-get-prop :id rem)))
+                     (unless (os-get-bug-id local-bugs id)
+                       (list rem))))
+                 (os-get-prop :bugs remote))))
+       (merged-bugs (append local-bugs remote-bugs)))
+    `(:title ,(os-get-prop :title local) ;; always keep local title
+             :url ,(os-get-prop :url local)
+             :bugs ,@merged-bugs)))
+
+
+(defun os-set-equal (a b)
+  "Return t if list A and B have the same elements, no matter the order."
+  (catch :exit
+    (mapc (lambda (e)
+            (unless (member e b)
+              (throw :exit nil)))
+          a)
+    (mapc (lambda (e)
+            (unless (member e a)
+              (throw :exit nil)))
+          b)
+    t))
+
+(defun os-bug-equalp (a b)
+  "Return t if A = B."
+  (flet ((peq (p) (os-bug-prop-equalp p a b)))
+    (and
+     (peq :id)
+     (peq :status)
+     (peq :title)
+     (peq :desc)
+     (peq :priority)
+     (peq :author)
+     (peq :assignee)
+     (peq :date-deadline)
+     (peq :date-modification)
+     (peq :date-creation)
+     (os-set-equal (os-get-prop :tags a) (os-get-prop :tags b)))))
+
+(defun os-buglist-equalp (a b)
+  "Return t if A = B."
+  (when (os-bug-prop-equalp :url a b)
+      (catch :exit
+        (mapcar*
+         (lambda (a b)
+           (unless (os-bug-equalp a b)
+             (thow :exit nil)))
+         (os-get-prop :bugs a)
+         (os-get-prop :bugs b))
+        t)))
+
+(defun os-bug-prop-equalp (prop a b)
+  "Return t if bug A PROP = bug B PROP, nil otherwise."
+  (equal (os-get-prop prop a) (os-get-prop prop b)))
 
 (defun os-push (buglist)
   "Send the new BUGLIST to the bugtracker."
   (os-github-send-buglist buglist))
 
-(defun os-pull ()
+(defun os-sync ()
   "Update buglists in current buffer."
   (interactive)
   (let* ((local-doc (org-element-parse-buffer))
@@ -403,6 +494,7 @@ BUGLIST in ELEM by BUGLIST."
          (merged-buglists (mapcar* 'os-merge-buglist local-buglists remote-buglists))
          (merged-headlines (mapcar 'os-buglist-to-element merged-buglists)))
 
+    ;; merged-buglists))
     ;; replace headlines in local-doc
     (mapcar* (lambda (a b) (setf (car a) (car b) (cdr a) (cdr b)))
              local-headlines merged-headlines)

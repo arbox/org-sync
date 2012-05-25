@@ -47,8 +47,8 @@
   "List of shared buglist properties.")
 
 (defconst os-bug-properties
-  '(id status author title priority tags date-deadline
-       date-creation date-modification author assignee desc)
+  '(id status title priority tags date-deadline date-creation
+  date-modification author assignee desc)
   "List of shared bug properties.")
 
 (defconst os-github-bug-properties
@@ -253,9 +253,13 @@ decoded response in JSON."
   "Return plist of PROPERTIES in bug or buglist BUG.
 
 Prefix property name with : when PREFIX is non-nil."
-  (mapcar (lambda (x)
-            (let ((p (os-propertize x)))
-              (cons (if prefix p x) (os-get-prop p bug)))) properties))
+  (let (plist)
+    (dolist (x properties)
+      (let* ((p (os-propertize x))
+             (val (os-get-prop p bug)))
+        (when val
+          (setq plist (cons (cons (if prefix p x) val) plist)))))
+    plist))
 
 (defun os-bug-to-element (b)
   "Returns bug B as a TODO element."
@@ -407,32 +411,30 @@ BUGLIST in ELEM by BUGLIST."
   (let*
       ;; update local bugs
       ((local-bugs
-        (append
-
-         (mapcar (lambda (loc)
-                   (let* ((id (os-get-prop :id loc))
-                          (rem (os-get-bug-id remote id)))
-                     (cond
-                      ((null rem)
-                       (list loc))
-                      ((os-bug-equalp loc rem)
-                       (list rem))
-                      (t ;; insert both
-                       (list loc rem)))))
-                 (os-get-prop :bugs local))))
+        (mapcar (lambda (loc)
+                  (let* ((id (os-get-prop :id loc))
+                         (rem (os-get-bug-id remote id)))
+                    (cond
+                     ((null rem)
+                      (list loc))
+                     ((os-bug-equalp loc rem)
+                      (list rem))
+                     (t ;; insert both
+                      (list loc rem)))))
+                (os-get-prop :bugs local)))
        ;; add new remote bugs
        (remote-bugs
-        (append
-         (mapcar (lambda (rem)
-                   (let* ((id (os-get-prop :id rem)))
-                     (unless (os-get-bug-id local-bugs id)
-                       (list rem))))
-                 (os-get-prop :bugs remote))))
-       (merged-bugs (append local-bugs remote-bugs)))
+        (mapcar (lambda (rem)
+                  (let* ((id (os-get-prop :id rem)))
+                    (unless (member-if (lambda (x)
+                                         (= (os-get-prop :id x) id))
+                                       (car local-bugs))
+                      (list rem))))
+                (os-get-prop :bugs remote)))
+       (merged-bugs (append (car local-bugs) (car remote-bugs))))
     `(:title ,(os-get-prop :title local) ;; always keep local title
              :url ,(os-get-prop :url local)
-             :bugs ,@merged-bugs)))
-
+             :bugs ,merged-bugs)))
 
 (defun os-set-equal (a b)
   "Return t if list A and B have the same elements, no matter the order."
@@ -494,7 +496,6 @@ BUGLIST in ELEM by BUGLIST."
          (merged-buglists (mapcar* 'os-merge-buglist local-buglists remote-buglists))
          (merged-headlines (mapcar 'os-buglist-to-element merged-buglists)))
 
-    ;; merged-buglists))
     ;; replace headlines in local-doc
     (mapcar* (lambda (a b) (setf (car a) (car b) (cdr a) (cdr b)))
              local-headlines merged-headlines)
@@ -506,3 +507,24 @@ BUGLIST in ELEM by BUGLIST."
       (goto-char (point-min))
       (insert (org-element-interpret-data local-doc))
       (goto-char oldpoint))))
+
+(defun os-sync-debug (&optional sym)
+  (let* ((local-doc (org-element-parse-buffer))
+         (local-headlines (os-find-buglists local-doc))
+         (local-buglists (mapcar 'os-headline-to-buglist local-headlines))
+         (local-urls (mapcar (lambda (x) (os-get-prop :url x)) local-buglists))
+         (remote-buglists (mapcar 'os-github-fetch-buglist local-urls))
+         (merged-buglists (mapcar* 'os-merge-buglist local-buglists remote-buglists))
+         (merged-headlines (mapcar 'os-buglist-to-element merged-buglists)))
+
+    (cond
+     ((eq sym 'headline)
+      merged-headlines)
+     ((eq sym 'local)
+      local-buglists)
+     ((eq sym 'remote)
+      remote-buglists)
+     ((eq sym 'merged)
+      merged-buglists)
+     (t
+      (list local-buglists remote-buglists merged-buglists merged-headlines)))))

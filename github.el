@@ -447,7 +447,6 @@ BUGLIST in ELEM by BUGLIST."
          (t
           (os-set-prop :sync 'conflict-local  loc)
           (os-set-prop :sync 'conflict-remote rem)
-          (throw :xxx (os-bug-diff loc rem))
           (setq merged-bugs (append merged-bugs (list loc rem)))))))
 
     ;; B. handle remote bugs and complete the merged-bugs list

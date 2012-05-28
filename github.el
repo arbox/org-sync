@@ -20,7 +20,7 @@
 ;; bug data structure
 ;; '(:id 3
 ;;   :status 'open ;; or 'closed
-;;   :sync 'delete ;; or 'change or (nil = same)
+;;   :sync 'delete ;; or 'change 'conflict-local 'conflict-remote 'same (= nil)
 ;;   :title "foo"
 ;;   :desc "blah"
 ;;   :priority 0 ;; up to 4 for max priority
@@ -41,6 +41,10 @@
 (require 'cl)
 (require 'json)
 (require 'url)
+
+(defcustom os-github-auth
+  nil
+  "Github login (\"user\" . \"pwd\")")
 
 (defconst os-buglist-properties
   '(title url)
@@ -132,10 +136,10 @@ invalid."
   "Send a BUGLIST on the bugtracker."
   (let* ((url (os-get-prop :url buglist))
          (ret (os-github-user-repo-from-url url))
-         (user (car ret))
-         (repo (cdr ret))
+         (user (first ret))
+         (repo (second ret))
          (new-url
-          (concat "https://api.github.com/repos/" user "/" repo "/issues"))
+          (concat "https://api.github.com/repos/" user "/" repo "/issues")))
 
          (dolist (b (os-get-prop :bugs buglist))
            (let* ((sync (os-get-prop :sync b))
@@ -153,14 +157,15 @@ invalid."
 
               ;; update bug
               ((eq sync 'change)
-               (os-github-request "PATCH" data))))))))
+               (os-github-request "PATCH" modif-url data)))))))
 
-(defun os-github-request (method url &optional data auth)
+(defun os-github-request (method url &optional data)
   "Send HTTP request at URL using METHOD with DATA.
 AUTH is a cons (\"user\" . \"pwd\"). Return the server
 decoded response in JSON."
   (let* ((url-request-method method)
          (url-request-data data)
+         (auth os-github-auth)
          (buf))
 
     (if (consp auth)
@@ -241,7 +246,7 @@ decoded response in JSON."
 
 (defun os-buglist-to-element (bl)
   "Returns buglist BL as an element."
-  (let* ((elist (mapcar 'os-bug-to-element (os-get-prop :bugs bl)))
+  (let* ((elist (delq nil (mapcar 'os-bug-to-element (os-get-prop :bugs bl))))
          (title (os-get-prop :title bl))
          (url (os-get-prop :url bl))
          (backend-props (os-plist os-github-buglist-properties bl)))
@@ -272,24 +277,24 @@ Prefix property name with : when PREFIX is non-nil."
     plist))
 
 (defun os-bug-to-element (b)
-  "Returns bug B as a TODO element."
+  "Return bug B as a TODO element if it is visible, nil otherwise."
   (let* ((skip '(title status desc sync))
          (props (os-filter-list os-bug-properties skip))
          (plist (os-plist props b))
          (backend-plist (os-plist os-github-bug-properties b)))
 
-    `(headline
-      (:title ,(os-get-prop :title b)
-              :level 2
-              :todo-type todo
-              :todo-keyword ,(upcase (symbol-name (os-get-prop :status b))))
+    (unless (eq 'delete (os-get-prop :sync b))
+      `(headline
+        (:title ,(os-get-prop :title b)
+                :level 2
+                :todo-type todo
+                :todo-keyword ,(upcase (symbol-name (os-get-prop :status b))))
 
-      (section
-       nil
-       (property-drawer
-        (:properties (,@plist ,@backend-plist)))
-       (paragraph nil ,(os-github-filter-desc (os-get-prop :desc b)))))))
-
+        (section
+         nil
+         (property-drawer
+          (:properties (,@plist ,@backend-plist)))
+         (paragraph nil ,(os-github-filter-desc (os-get-prop :desc b))))))))
 
 (defun os-replace-buglist (elem buglist)
   "Replace first occurence of the buglist with the same url as
@@ -337,7 +342,7 @@ BUGLIST in ELEM by BUGLIST."
   (flet ((va (k a) (cdr (assoc (symbol-name k) a)))
          (str-to-n (x) (if (stringp x) (string-to-number x) -1)))
     (let* ((titlecons (org-element-property :title h))
-           (title (if (consp titlecons) (car titlecons) titlecons))
+           (title (car titlecons))
            (status (if (string= "OPEN"
                                 (org-element-property :todo-keyword h))
                        'open
@@ -420,12 +425,25 @@ BUGLIST in ELEM by BUGLIST."
               (throw :exit x)))
           (os-get-prop :bugs buglist))))
 
+(defun os-buglist-contains-dups (buglist)
+  "Return t if BUGLIST contains bugs with the same id."
+  (let* ((len 0)
+         (ids (mapcar
+              (lambda (x)
+                (incf len)
+                (os-get-prop :id x))
+              (os-get-prop :bugs buglist))))
+    (delete-dups ids)
+    (/= len (length ids))))
+
 (defun os-merge-buglist (local remote)
   "Return a buglist merged from buglist LOCAL & REMOTE."
   (let* ((local-bugs (os-get-prop :bugs local))
          (remote-bugs (os-get-prop :bugs remote))
          (merged-bugs))
 
+    (when (os-buglist-contains-dups local)
+      (error "Buglist \"%s\" contains unmerged bugs." (car (os-get-prop :title local))))
 
     ;; A. handle local bugs and fill the merged-bugs list
     (dolist (loc local-bugs)
@@ -434,13 +452,28 @@ BUGLIST in ELEM by BUGLIST."
 
         (cond
          ;; if the bug doesn't exist in remote, it's a new one
+         ;; BUG: if the bug is deleted externally before sync it will
+         ;; show up as new...
          ((null rem)
           (os-set-prop :sync 'new loc)
+          (setq merged-bugs (append merged-bugs (list loc))))
+
+         ;; if the bug was marked to be deleted, insert it but don't
+         ;; display it
+         ((eq 'delete (os-get-prop :sync loc))
           (setq merged-bugs (append merged-bugs (list loc))))
 
          ;; if local bug = remote bug, nothing to sync
          ((os-bug-equalp loc rem)
           (os-set-prop :sync 'same loc)
+          (setq merged-bugs (append merged-bugs (list loc))))
+
+         ;; if local != remote but the modification date is equal, we
+         ;; keep the local and push it. we keep a ref to the remote to
+         ;; compute a diff when we push
+         ((os-bug-prop-equalp :date-modification loc rem)
+          (os-set-prop :sync 'change loc)
+          (os-set-prop :old-bug rem loc)
           (setq merged-bugs (append merged-bugs (list loc))))
 
          ;; local and remote differ, insert both and let the user merge
@@ -534,6 +567,8 @@ BUGLIST in ELEM by BUGLIST."
   "Send the new BUGLIST to the bugtracker."
   (os-github-send-buglist buglist))
 
+;; XXX comparer date, faire push et fonction d'update de buffer.
+
 (defun os-sync ()
   "Update buglists in current buffer."
   (interactive)
@@ -545,6 +580,9 @@ BUGLIST in ELEM by BUGLIST."
          (merged-buglists (mapcar*
                            'os-merge-buglist local-buglists remote-buglists))
          (merged-headlines (mapcar 'os-buglist-to-element merged-buglists)))
+
+    ;; push update
+    (mapc 'os-push merged-buglists)
 
     ;; replace headlines in local-doc
     (mapcar* (lambda (a b) (setf (car a) (car b) (cdr a) (cdr b)))

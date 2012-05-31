@@ -131,33 +131,53 @@ invalid."
       (kill-buffer)
       ret)))
 
-
 (defun os-github-send-buglist (buglist)
-  "Send a BUGLIST on the bugtracker."
+  "Send a BUGLIST on the bugtracker and return an updated buglist."
   (let* ((url (os-get-prop :url buglist))
          (ret (os-github-user-repo-from-url url))
          (user (first ret))
          (repo (second ret))
          (new-url
-          (concat "https://api.github.com/repos/" user "/" repo "/issues")))
+          (concat "https://api.github.com/repos/" user "/" repo "/issues"))
+         (new-bugs
+          (mapcar (lambda (b)
+                    (let* ((sync (os-get-prop :sync b))
+                           (id (os-get-prop :id b))
+                           (data (os-github-bug-to-json b))
+                           (modif-url (format "%s/%d" new-url id))
+                           (result
+                            (cond
+                             ;; new bug
+                             ((eq sync 'new)
+                              (os-github-request "POST" new-url data))
 
-         (dolist (b (os-get-prop :bugs buglist))
-           (let* ((sync (os-get-prop :sync b))
-                  (id (os-get-prop :id b))
-                  (data (os-github-bug-to-json b))
-                  (modif-url (format "%s/%d" new-url id)))
-             (cond
-              ;; new bug
-              ((eq sync 'new)
-               (os-github-request "POST" new-url data))
+                             ;; delete bug
+                             ((eq sync 'delete)
+                              (os-github-request "DELETE" modif-url))
 
-              ;; delete bug
-              ((eq sync 'delete)
-               (os-github-request "DELETE" modif-url))
+                             ;; update bug
+                             ((eq sync 'change)
+                              (os-github-request "PATCH" modif-url data))))
+                           (err (cdr (assoc 'message result))))
 
-              ;; update bug
-              ((eq sync 'change)
-               (os-github-request "PATCH" modif-url data)))))))
+                      (cond
+                       ;; if bug was :sync same, return it
+                       ((null result)
+                        b)
+
+                       ;; if json result has a message field, error
+                       ((stringp err)
+                        (error "Github: %s" err))
+
+                       ;; else, result is the updated bug
+                       (t
+                        (os-github-json-to-bug result)))))
+                  (os-get-prop :bugs buglist))))
+
+    `(:title ,(os-get-prop :title buglist)
+             :url ,(os-get-prop :url buglist)
+             :bugs ,new-bugs)))
+
 
 (defun os-github-request (method url &optional data)
   "Send HTTP request at URL using METHOD with DATA.
@@ -317,10 +337,9 @@ BUGLIST in ELEM by BUGLIST."
 
 (defun os-buglist-headline-p (elem)
   "Return t if ELEM is a buglist headline."
-  (when (and
-         (eq (org-element-type elem) 'headline)
-         (stringp (os-headline-url elem)))
-    t))
+  (and
+   (eq (org-element-type elem) 'headline)
+   (stringp (os-headline-url elem))))
 
 (defun os-headline-to-buglist (h)
   "Return headline H as a buglist."
@@ -423,7 +442,8 @@ BUGLIST in ELEM by BUGLIST."
     (mapc (lambda (x)
             (when (= (os-get-prop :id x) id)
               (throw :exit x)))
-          (os-get-prop :bugs buglist))))
+          (os-get-prop :bugs buglist))
+    nil))
 
 (defun os-buglist-contains-dups (buglist)
   "Return t if BUGLIST contains bugs with the same id."
@@ -579,10 +599,8 @@ BUGLIST in ELEM by BUGLIST."
          (remote-buglists (mapcar 'os-github-fetch-buglist local-urls))
          (merged-buglists (mapcar*
                            'os-merge-buglist local-buglists remote-buglists))
-         (merged-headlines (mapcar 'os-buglist-to-element merged-buglists)))
-
-    ;; push update
-    (mapc 'os-push merged-buglists)
+         (updated-merged-buglists (mapcar 'os-push merged-buglists))
+         (merged-headlines (mapcar 'os-buglist-to-element updated-merged-buglists)))
 
     ;; replace headlines in local-doc
     (mapcar* (lambda (a b) (setf (car a) (car b) (cdr a) (cdr b)))
@@ -604,7 +622,8 @@ BUGLIST in ELEM by BUGLIST."
          (remote-buglists (mapcar 'os-github-fetch-buglist local-urls))
          (merged-buglists (mapcar*
                            'os-merge-buglist local-buglists remote-buglists))
-         (merged-headlines (mapcar 'os-buglist-to-element merged-buglists)))
+         );(updated-merged-buglists (mapcar 'os-push merged-buglists))
+         ;(merged-headlines (mapcar 'os-buglist-to-element updated-merged-buglists))))
 
     (cond
      ((eq sym 'headline)

@@ -427,14 +427,55 @@ BUGLIST in ELEM by BUGLIST."
      (t
       nil))))
 
+(defun os-add-keyword (tree key val)
+  "Add KEY:VAL as a header in TREE by side-effects and return TREE.
+If KEY is already equal to VAL, no change is made."
+  (catch :exit
+    (let* ((section (first (org-element-contents tree))))
+      (when (and (eq 'org-data (org-element-type tree))
+                 (eq 'section  (org-element-type section)))
+
+        (dolist (e (org-element-contents section))
+          (let* ((type (org-element-type e))
+                 (ekey (org-element-property :key e))
+                 (eval (org-element-property :value e)))
+
+            (when (and (eq 'keyword type)
+                       (string= ekey key)
+                       (string= eval val))
+              (throw :exit nil))))
+
+        (setf (nthcdr 2 section)
+              (cons
+               `(keyword (:key ,key :value ,val))
+               (org-element-contents section))))))
+  tree)
+
+
 (defun os-import (url)
   "Fetch and insert bugs from URL."
   (interactive "sURL: ")
   (let* ((buglist (os-github-fetch-buglist url))
-         (elem (os-buglist-to-element buglist)))
+         (elem (os-buglist-to-element buglist))
+         (bug-keyword '(sequence "OPEN" "|" "CLOSED")))
     (save-excursion
       (insert (org-element-interpret-data
-               `(org-data nil ,elem))))))
+               `(org-data nil ,elem)))
+
+      (unless (member bug-keyword org-todo-keywords)
+        (goto-char (point-min))
+        (insert "#+TODO: OPEN | CLOSED\n")
+        (add-to-list 'org-todo-keywords '(sequence "OPEN" "|" "CLOSED"))
+
+        ;; the buffer has to be reparsed in order to have the new
+        ;; keyword taken into account
+        ;; from org-ctrl-c-ctrl-c, thanks to vsync in #org-mode
+        (let ((org-inhibit-startup-visibility-stuff t)
+              (org-startup-align-all-tables nil))
+          (when (boundp 'org-table-coordinate-overlays)
+            (mapc 'delete-overlay org-table-coordinate-overlays)
+            (setq org-table-coordinate-overlays nil))
+          (org-save-outline-visibility 'use-markers (org-mode-restart)))))))
 
 (defun os-get-bug-id (buglist id)
   "Return bug ID from BUGLIST."
@@ -587,8 +628,6 @@ BUGLIST in ELEM by BUGLIST."
   "Send the new BUGLIST to the bugtracker."
   (os-github-send-buglist buglist))
 
-;; XXX comparer date, faire push et fonction d'update de buffer.
-
 (defun os-sync ()
   "Update buglists in current buffer."
   (interactive)
@@ -605,6 +644,8 @@ BUGLIST in ELEM by BUGLIST."
     ;; replace headlines in local-doc
     (mapcar* (lambda (a b) (setf (car a) (car b) (cdr a) (cdr b)))
              local-headlines merged-headlines)
+
+    (os-add-keyword local-doc "TODO" "OPEN | CLOSED")
 
     ;; since we replace the whole buffer, save-excusion doesn't work so
     ;; we manually (re)store the point

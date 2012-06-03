@@ -1,7 +1,5 @@
 ;; simple tool that downloads buglist from GitHub bugtracker
 
-;; >>> YOU NEED: "#+TODO: OPEN | CLOSED" <<<
-
 ;; fast (small repo):
 ;; M-x os-import RET github.com/octocat/Hello-World RET
 
@@ -9,7 +7,7 @@
 ;; M-x os-import RET github.com/joyent/node RET
 
 ;; update every buglist in current document
-;; M-x os-pull
+;; M-x os-sync
 
 ;; buglist data structure
 

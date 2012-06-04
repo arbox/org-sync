@@ -510,12 +510,14 @@ If KEY is already equal to VAL, no change is made."
              (rem (os-get-bug-id remote id)))
 
         (cond
-         ;; if the bug doesn't exist in remote, it's a new one
-         ;; BUG: if the bug is deleted externally before sync it will
-         ;; show up as new...
+         ;; if the bug doesn't exist in remote, it's a new one or it
+         ;; was deleted
          ((null rem)
-          (os-set-prop :sync 'new loc)
-          (setq merged-bugs (append merged-bugs (list loc))))
+          ;; if the remote bug doesn't exist but the local one has a
+          ;; valid id, it means the remote one was deleted, ignore it
+          (unless (and (numberp id) (>= id 0))
+            (os-set-prop :sync 'new loc)
+            (setq merged-bugs (append merged-bugs (list loc))))
 
          ;; if the bug was marked to be deleted, insert it but don't
          ;; display it

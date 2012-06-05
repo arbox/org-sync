@@ -368,9 +368,12 @@ BUGLIST in ELEM by BUGLIST."
            (sync (when (string=
                         "DELETE" (org-element-property :todo-keyword h))
                    'delete))
+           (section (org-element-contents (car (org-element-contents h))))
            (desc
             (org-element-interpret-data
-             (nthcdr 1 (org-element-contents (car (org-element-contents h))))))
+             (remove-if (lambda (e)
+                          (eq (org-element-type e) 'property-drawer))
+                        section)))
            (headline-alist (org-element-property
                             :properties
                             (car

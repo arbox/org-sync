@@ -208,7 +208,8 @@ decoded response in JSON."
 (defun os-github-fetch-buglist (repo)
   "Return the buglist at REPO."
   (let* ((url (os-github-buglist-url repo))
-         (json (os-github-fetch-json url))
+         (json (vconcat (os-github-fetch-json url)
+                        (os-github-fetch-json (concat url "&state=closed"))))
          (title (concat "Bugs of " (os-github-repo-name url))))
 
     `(:title ,title
@@ -517,7 +518,7 @@ If KEY is already equal to VAL, no change is made."
           ;; valid id, it means the remote one was deleted, ignore it
           (unless (and (numberp id) (>= id 0))
             (os-set-prop :sync 'new loc)
-            (setq merged-bugs (append merged-bugs (list loc))))
+            (setq merged-bugs (append merged-bugs (list loc)))))
 
          ;; if the bug was marked to be deleted, insert it but don't
          ;; display it

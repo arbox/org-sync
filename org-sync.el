@@ -72,7 +72,8 @@
   "List of shared buglist properties.")
 
 (defvar os-backend-alist
-  '(("github.com/\\(?:repos/\\)?[^/]+/[^/]+" . github))
+  '(("github.com/\\(?:repos/\\)?[^/]+/[^/]+" . github)
+    ("bitbucket.org/[^/]+/[^/]+" . bb))
   "Alist of url patterns vs corresponding org-sync backend.")
 
 (defun os-get-backend (url)
@@ -121,11 +122,11 @@ Else BACKEND should be a backend symbol."
 
 (os-defun-overridable os--send-buglist (buglist)
   "Send a BUGLIST on the bugtracker and return an updated buglist."
-  (error "No backend selected."))
+  (error "No send backend selected."))
 
 (os-defun-overridable os--fetch-buglist (repo)
   "Return the buglist at url REPO."
-  (error "No backend selected."))
+  (error "No fetch backend selected."))
 
 (defun os-buglist-to-element (bl)
   "Return buglist BL as an element."

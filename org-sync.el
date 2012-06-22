@@ -14,11 +14,12 @@
 ;;   :tags ("a" "b" "c")
 ;;   :author "Aurélien"
 ;;   :assignee "Foo"
+;;   :milestone "foo"
 
-;;   ;; dates are in ISO-8601
-;;   :date-deadline "2011-04-12T23:09:31Z"
-;;   :date-creation "2011-04-10T20:09:31Z"
-;;   :date-modification "2011-04-10T21:09:31Z"
+;;   ;; dates are regular emacs time object
+;;   :date-deadline ...
+;;   :date-creation ...
+;;   :date-modification ...
 
 ;;   ;; backend-specific properties
 ;;   ;; ...
@@ -66,7 +67,6 @@
              ;; else, call the generic action
              ,@body))))))
 
-
 (defconst os-buglist-properties
   '(title url)
   "List of shared buglist properties.")
@@ -101,7 +101,7 @@ Else BACKEND should be a backend symbol."
 
 (defconst os-bug-properties
   '(id status title priority tags date-deadline date-creation
-       date-modification author assignee desc)
+       date-modification author assignee desc milestone)
   "List of shared bug properties.")
 
 (os-defun-overridable os--backend-bug-properties ()
@@ -151,18 +151,24 @@ Else BACKEND should be a backend symbol."
 (defun os-plist (properties bug &optional prefix)
   "Return plist of PROPERTIES in bug or buglist BUG.
 
-Prefix property name with : when PREFIX is non-nil."
+Prefix property name with : when PREFIX is non-nil.
+If a property starts with \"date-\", the value is formated as an ISO 8601."
   (let (plist)
     (dolist (x properties)
       (let* ((p (os-propertize x))
              (val (os-get-prop p bug)))
         (when val
-          (setq plist (cons (cons (if prefix p x) val) plist)))))
+          (setq plist (cons
+                       (cons (if prefix p x)
+                             (if (os-prop-date-p x)
+                                 (os-time-to-string val)
+                               val))
+                             plist)))))
     plist))
 
 (defun os-bug-to-element (b)
   "Return bug B as a TODO element if it is visible, nil otherwise."
-  (let* ((skip '(title status desc sync))
+  (let* ((skip '(title status desc))
          (props (os-filter-list (append '(sync) os-bug-properties) skip))
          (plist (os-plist props b))
          (backend-plist (os-plist (os--backend-bug-properties) b)))
@@ -250,9 +256,10 @@ BUGLIST in ELEM by BUGLIST."
                    (mapcar 'symbol-name (read tags-str))))
            (author (va 'author headline-alist))
            (assignee (va 'assignee headline-alist))
-           (dtime (va 'date-deadline headline-alist))
-           (ctime (va 'date-creation headline-alist))
-           (mtime (va 'date-modification headline-alist))
+           (dtime (os-parse-date (va 'date-deadline headline-alist)))
+           (ctime (os-parse-date (va 'date-creation headline-alist)))
+           (mtime (os-parse-date (va 'date-modification headline-alist)))
+           (milestone (va 'milestone headline-alist))
            (backend-plist (mapcar (lambda (x)
                                     (cons
                                      (os-propertize x)
@@ -267,10 +274,15 @@ BUGLIST in ELEM by BUGLIST."
             :tags ,tags
             :author ,author
             :assignee ,assignee
+            :milestone ,milestone
             :date-deadline ,dtime
             :date-creation ,ctime
             :date-modification ,mtime
             ,@backend-plist))))
+
+(defun os-prop-date-p (sym)
+  "Return non-nil if SYM is a date property (starts with \"date-\")."
+  (string-prefix-p "date-" (symbol-name sym)))
 
 (defun os-find-buglists (elem)
   "Return every buglist headlines in ELEM."
@@ -448,6 +460,15 @@ If KEY is already equal to VAL, no change is made."
               (throw :exit nil)))
           b)
     t))
+
+(defun os-parse-date (date)
+  "Parse and return DATE as a time or nil."
+  (when date
+    (date-to-time date)))
+
+(defun os-time-to-string (time)
+  "Return TIME as a full ISO 8601 date string."
+  (format-time-string "%Y-%m-%dT%T%z" time))
 
 (defun os-bug-diff (a b)
   "Return a list of properties that differs in A and B."

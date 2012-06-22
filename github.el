@@ -150,7 +150,6 @@ decoded response in JSON."
       (match-string 1 url)
     "<project name>"))
 
-
 (defun os-github-filter-desc (desc)
   "Return a filtered description of a GitHub description."
   (replace-regexp-in-string "\\([^ \t\n]\\)[ \t\n]*\\'"
@@ -167,13 +166,13 @@ decoded response in JSON."
            (desc  (os-github-filter-desc (v 'body)))
            (author (va 'login (v 'user)))
            (assignee (va 'login (v 'assignee)))
-           (ctime (v 'created_at))
-           (milestone (v 'milestone))
-           (dtime (va 'description milestone))
-           (mtime (v 'updated_at))
+           (milestone-alist (v 'milestone))
+           (milestone (va 'title milestone-alist))
+           (ctime (os-parse-date (v 'created_at)))
+           (dtime (os-parse-date (va 'due_on milestone-alist)))
+           (mtime (os-parse-date (v 'updated_at)))
            (tags (mapcar (lambda (e)
-                           (va 'name e)) (v 'labels)))
-           (priority 2))
+                           (va 'name e)) (v 'labels))))
 
       `(:id ,id
             :author ,author
@@ -181,7 +180,7 @@ decoded response in JSON."
             :status ,stat
             :title ,title
             :desc ,desc
-            :priority ,priority ;; XXX: defvar for default priority
+            :milestone ,milestone
             :tags ,tags
             :date-deadline ,dtime
             :date-creation ,ctime
@@ -194,4 +193,5 @@ decoded response in JSON."
      (body . ,(os-get-prop :desc bug))
      (assignee . ,(os-get-prop :assignee bug))
      (state . ,(symbol-name (os-get-prop :status bug)))
-     (labels . [ ,@(os-get-prop :tags bug) ]))))
+     (labels . [ ,@(os-get-prop :tags bug) ])))
+  )

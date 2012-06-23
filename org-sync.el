@@ -448,50 +448,20 @@ If KEY is already equal to VAL, no change is made."
   "Return TIME as a full ISO 8601 date string."
   (format-time-string "%Y-%m-%dT%T%z" time))
 
-
 (defun os-bug-diff (a b)
-  "Return a list of properties that differs in A and B."
+  "Return an alist of properties that differs in A and B or nil if A = B.
+The form of the alist is ((:property . (valueA valueB)...)"
   (let ((diff)
-        (props
-        '(:id :status :title :desc :priority :author :assignee
-              :date-deadline :date-modification :date-creation)))
-    (dolist (p props)
-      (unless (os-bug-prop-equalp p a b)
-        (setq diff (append diff `(,p (,(os-get-prop p a) ,(os-get-prop p b)))))))
-
-    (let ((tag-a (os-get-prop :tags a))
-          (tag-b (os-get-prop :tags b)))
-      (unless (os-set-equal tag-a tag-b)
-        (setq diff (append diff `(:tags ,tag-a ,tab-b)))))
-    diff))
-
-(defun os-bug-equalp (a b)
-  "Return t if A = B."
-  (flet ((peq (p) (os-bug-prop-equalp p a b)))
-    (and
-     (peq :id)
-     (peq :status)
-     (peq :title)
-     (peq :desc)
-     (peq :priority)
-     (peq :author)
-     (peq :assignee)
-     (peq :date-deadline)
-     (peq :date-modification)
-     (peq :date-creation)
-     (os-set-equal (os-get-prop :tags a) (os-get-prop :tags b)))))
-
-(defun os-buglist-equalp (a b)
-  "Return t if A = B."
-  (when (os-bug-prop-equalp :url a b)
-      (catch :exit
-        (mapcar*
-         (lambda (a b)
-           (unless (os-bug-equalp a b)
-             (thow :exit nil)))
-         (os-get-prop :bugs a)
-         (os-get-prop :bugs b))
-        t)))
+        (props-list
+         (append
+          (loop for (akey aval) on a by #'cddr collect akey)
+          (loop for (bkey bval) on b by #'cddr collect bkey))))
+    (delete-dups props-list)
+    (dolist (key props-list diff)
+      (let ((va (os-get-prop key a))
+            (vb (os-get-prop key b)))
+        (unless (equal va vb)
+          (setq diff (cons `(,key . (,va ,vb)) diff)))))))
 
 (defun os-bug-prop-equalp (prop a b)
   "Return t if bug A PROP = bug B PROP, nil otherwise."

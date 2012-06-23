@@ -163,7 +163,7 @@ If a property starts with \"date-\", the value is formated as an ISO 8601."
                              (if (os-prop-date-p x)
                                  (os-time-to-string val)
                                val))
-                             plist)))))
+                       plist)))))
     plist))
 
 (defun os-bug-to-element (b)

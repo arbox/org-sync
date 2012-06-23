@@ -117,6 +117,11 @@ decoded response in JSON."
   (flet ((va (key alist) (cdr (assoc key alist)))
          (v (key) (va key json)))
     (let* ((id (v 'local_id))
+           (metadata (v 'metadata))
+           (kind (va 'kind metadata))
+           (version (va 'version metadata))
+           (component (va 'component metadata))
+           (milestone (va 'milestone metadata))
            (author (va 'username (v 'reported_by)))
            (assignee (va 'username (v 'responsible)))
            (txtstatus (v 'status))
@@ -124,18 +129,24 @@ decoded response in JSON."
                            (string= txtstatus "new"))
                        'open
                      'closed))
+           (priority (v 'priority))
            (title (v 'title))
            (desc (v 'content))
-           (ctime (v 'utc_created_on))
-           (mtime (v 'utc_last_updated)))
+           (ctime (os-parse-date (v 'utc_created_on)))
+           (mtime (os-parse-date (v 'utc_last_updated))))
 
       `(:id ,id
+            :priority ,priority
             :assignee ,assignee
             :status ,status
             :title ,title
             :desc ,desc
             :date-creation ,ctime
-            :date-modification ,mtime))))
+            :date-modification ,mtime
+            :kind ,kind
+            :version ,version
+            :component ,component
+            :milestone ,milestone))))
 
 ;; override
 (defun os-bb-send-buglist (buglist)

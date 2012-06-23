@@ -386,7 +386,7 @@ If KEY is already equal to VAL, no change is made."
           (setq merged-bugs (append merged-bugs (list loc))))
 
          ;; if local bug = remote bug, nothing to sync
-         ((os-bug-equalp loc rem)
+         ((not (os-bug-diff loc rem))
           (os-set-prop :sync 'same loc)
           (setq merged-bugs (append merged-bugs (list loc))))
 

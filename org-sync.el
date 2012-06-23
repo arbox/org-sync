@@ -168,22 +168,21 @@ If a property starts with \"date-\", the value is formated as an ISO 8601."
 
 (defun os-bug-to-element (b)
   "Return bug B as a TODO element if it is visible, nil otherwise."
-  (let* ((skip '(title status desc))
-         (props (os-filter-list (append '(sync) os-bug-properties) skip))
-         (plist (os-plist props b))
-         (backend-plist (os-plist (os--backend-bug-properties) b)))
-
+  (let* ((skip '(:title :status :desc)) ;; not in PROPERTIES block
+         (prop-alist (loop for (a b) on b by #'cddr
+                           if (and b (not (memq a skip)))
+                           collect (cons (substring (symbol-name a) 1)
+                                         (prin1-to-string b)))))
     (unless (eq 'delete (os-get-prop :sync b))
       `(headline
         (:title ,(os-get-prop :title b)
                 :level 2
                 :todo-type todo
                 :todo-keyword ,(upcase (symbol-name (os-get-prop :status b))))
-
         (section
          nil
          (property-drawer
-          (:properties (,@plist ,@backend-plist)))
+          (:properties ,prop-alist))
          (paragraph nil ,(os-get-prop :desc b)))))))
 
 (defun os-replace-buglist (elem buglist)
@@ -226,15 +225,11 @@ BUGLIST in ELEM by BUGLIST."
 
 (defun os-headline-to-bug (h)
   "Return headline H as a bug."
-  ;; value of "sym" in alist a
-  (flet ((va (k a) (cdr (assoc (symbol-name k) a)))
-         (str-to-n (x) (if (stringp x) (string-to-number x) -1)))
-    (let* ((titlecons (org-element-property :title h))
-           (title (car titlecons))
+    (let* ((skip '(:status :title :sync :desc))
            (status (if (string= "OPEN"
                                 (org-element-property :todo-keyword h))
-                       'open
-                     'closed))
+                       'open 'closed))
+           (title (car (org-element-property :title h)))
            (sync (when (string=
                         "DELETE" (org-element-property :todo-keyword h))
                    'delete))
@@ -244,41 +239,24 @@ BUGLIST in ELEM by BUGLIST."
              (remove-if (lambda (e)
                           (eq (org-element-type e) 'property-drawer))
                         section)))
+
            (headline-alist (org-element-property
                             :properties
                             (car
                              (org-element-contents
                               (car (org-element-contents h))))))
-           (id (str-to-n (va 'id  headline-alist)))
-           (priority (str-to-n (va 'priority headline-alist)))
-           (tags-str (va 'tags headline-alist))
-           (tags (when (stringp tags-str)
-                   (mapcar 'symbol-name (read tags-str))))
-           (author (va 'author headline-alist))
-           (assignee (va 'assignee headline-alist))
-           (dtime (os-parse-date (va 'date-deadline headline-alist)))
-           (ctime (os-parse-date (va 'date-creation headline-alist)))
-           (mtime (os-parse-date (va 'date-modification headline-alist)))
-           (milestone (va 'milestone headline-alist))
-           (backend-plist (mapcar (lambda (x)
-                                    (cons
-                                     (os-propertize x)
-                                     (va x headline-alist)))
-                                  (os--backend-bug-properties))))
-      `(:id ,id
-            :desc ,desc
-            :status ,status
-            :sync ,sync
-            :title ,title
-            :priority ,priority
-            :tags ,tags
-            :author ,author
-            :assignee ,assignee
-            :milestone ,milestone
-            :date-deadline ,dtime
-            :date-creation ,ctime
-            :date-modification ,mtime
-            ,@backend-plist))))
+           (bug (list
+                 :status status
+                 :title title
+                 :sync sync
+                 :desc desc)))
+
+      (mapc (lambda (x)
+              (let ((k (intern (concat ":" (car x))))
+                    (v (when (cdr x) (read (cdr x)))))
+                  (unless (memq k skip)
+                    (setq bug (cons k (cons v bug)))))) headline-alist)
+      bug))
 
 (defun os-prop-date-p (sym)
   "Return non-nil if SYM is a date property (starts with \"date-\")."
@@ -469,6 +447,7 @@ If KEY is already equal to VAL, no change is made."
 (defun os-time-to-string (time)
   "Return TIME as a full ISO 8601 date string."
   (format-time-string "%Y-%m-%dT%T%z" time))
+
 
 (defun os-bug-diff (a b)
   "Return a list of properties that differs in A and B."

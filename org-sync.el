@@ -226,13 +226,10 @@ BUGLIST in ELEM by BUGLIST."
 (defun os-headline-to-bug (h)
   "Return headline H as a bug."
     (let* ((skip '(:status :title :sync :desc))
-           (status (if (string= "OPEN"
-                                (org-element-property :todo-keyword h))
-                       'open 'closed))
+           (todo-keyword (org-element-property :todo-keyword h))
+           (status (if (string= "OPEN" todo-keyword) 'open 'closed))
            (title (car (org-element-property :title h)))
-           (sync (when (string=
-                        "DELETE" (org-element-property :todo-keyword h))
-                   'delete))
+           (sync (when (string= "DELETE" todo-keyword) 'delete))
            (section (org-element-contents (car (org-element-contents h))))
            (desc
             (org-element-interpret-data
@@ -253,7 +250,8 @@ BUGLIST in ELEM by BUGLIST."
 
       (mapc (lambda (x)
               (let ((k (intern (concat ":" (car x))))
-                    (v (when (cdr x) (read (cdr x)))))
+                    (v (when (and (cdr x) (not (equal (cdr x) "")))
+                         (read (cdr x)))))
                   (unless (memq k skip)
                     (setq bug (cons k (cons v bug)))))) headline-alist)
       bug))

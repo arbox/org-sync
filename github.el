@@ -193,5 +193,4 @@ decoded response in JSON."
      (body . ,(os-get-prop :desc bug))
      (assignee . ,(os-get-prop :assignee bug))
      (state . ,(symbol-name (os-get-prop :status bug)))
-     (labels . [ ,@(os-get-prop :tags bug) ])))
-  )
+     (labels . [ ,@(os-get-prop :tags bug) ]))))

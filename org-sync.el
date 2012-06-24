@@ -168,7 +168,7 @@ If a property starts with \"date-\", the value is formated as an ISO 8601."
 
 (defun os-bug-to-element (b)
   "Return bug B as a TODO element if it is visible, nil otherwise."
-  (let* ((skip '(:title :status :desc)) ;; not in PROPERTIES block
+  (let* ((skip '(:title :status :desc :old-bug)) ;; not in PROPERTIES block
          (prop-alist (loop for (a b) on b by #'cddr
                            if (and b (not (memq a skip)))
                            collect (cons (substring (symbol-name a) 1)
@@ -465,21 +465,36 @@ The form of the alist is ((:property . (valueA valueB)...)"
   "Return t if bug A PROP = bug B PROP, nil otherwise."
   (equal (os-get-prop prop a) (os-get-prop prop b)))
 
-(defun os-sync ()
+(defun os-sync (debug)
   "Update buglists in current buffer."
-  (interactive)
+  (interactive "P")
   (let* ((local-doc (org-element-parse-buffer))
          (local-headlines (os-find-buglists local-doc)))
 
-    (dolist (headline (os-find-buglists local-doc))
+    (dolist (headline local-headlines)
       (let* ((local (os-headline-to-buglist headline))
              (url (os-get-prop :url local)))
 
         (os-with-backend url
           (let* ((remote (os--fetch-buglist url))
                  (merged (os-merge-buglist local remote))
-                 (updated (os--send-buglist merged))
-                 (new-headline (os-buglist-to-element updated)))
+                 (updated)
+                 (new-headline))
+
+            (if debug
+                (progn
+                  (with-current-buffer (get-buffer-create "*Sending*")
+                    (emacs-lisp-mode)
+                    (insert (pp merged))
+                    (switch-to-buffer (current-buffer))
+                    (if (yes-or-no-p "ok?")
+                        (progn
+                          (setq updated (os--send-buglist merged))
+                          (setq new-headline (os-buglist-to-element updated)))
+                      (error "sync canceled."))))
+              (progn
+                (setq updated (os--send-buglist merged))
+                (setq new-headline (os-buglist-to-element updated))))
 
             ;; replace headlines in local-doc
             (setf (car headline) (car new-headline)

@@ -7,26 +7,29 @@
   "Github login (\"user\" . \"pwd\")")
 
 ;; override
-(defun os-github-fetch-buglist (repo)
-  "Return the buglist at url REPO."
-  (let* ((url (os-github-buglist-url repo))
+(defun os-github-fetch-buglist ()
+  "Return the buglist at os-base-url."
+  (let* ((url (concat os-base-url "/issues?per_page=100"))
          (json (vconcat (os-github-fetch-json url)
                         (os-github-fetch-json (concat url "&state=closed"))))
          (title (concat "Bugs of " (os-github-repo-name url))))
 
     `(:title ,title
-             :url ,url
+             :url ,os-base-url
              :bugs ,(mapcar 'os-github-json-to-bug json))))
+
+;; override
+(defun os-github-base-url (url)
+  "Return base url."
+  (when (string-match "github.com/\\(?:repos/\\)?\\([^/]+\\)/\\([^/]+\\)" url)
+    (let ((user (match-string 1 url))
+          (repo (match-string 2 url)))
+    (concat "https://api.github.com/repos/" user "/" repo ""))))
 
 ;; override
 (defun os-github-send-buglist (buglist)
   "Send a BUGLIST on the bugtracker and return an updated buglist."
-  (let* ((url (os-get-prop :url buglist))
-         (ret (os-github-user-repo-from-url url))
-         (user (first ret))
-         (repo (second ret))
-         (new-url
-          (concat "https://api.github.com/repos/" user "/" repo "/issues"))
+  (let* ((new-url (concat os-base-url "/issues"))
          (new-bugs
           (mapcar (lambda (b)
                     (let* ((sync (os-get-prop :sync b))
@@ -66,20 +69,6 @@
              :url ,(os-get-prop :url buglist)
              :bugs ,new-bugs)))
 
-(defun os-github-user-repo-from-url (url)
-  "Return a cons (username . repo-name) extracted from URL."
-  (when (string-match "github.com/\\(?:repos/\\)?\\([^/]+\\)/\\([^/]+\\)" url)
-    (list (match-string 1 url) (match-string 2 url))))
-
-;; XXX: per_page defconst
-(defun os-github-buglist-url (repo)
-  "Return the first url to fetch bugs from REPO.
-
-Return the first page url from REPO url or nil if REPO is
-invalid."
-  (when (string-match "github.com/\\(?:repos/\\)?\\([^/]+/[^/]+\\)" repo)
-    (concat "https://api.github.com/repos/" (match-string 1 repo)
-            "/issues?per_page=100")))
 
 (defun os-github-fetch-json (url)
   "Return a parsed JSON object of all the pages of URL."
@@ -146,7 +135,7 @@ decoded response in JSON."
 
 (defun os-github-repo-name (url)
   "Return the name of the repo at URL."
-  (if (string-match "github.com/\\(?:repos/\\)[^/]+/\\([^/]+\\)" url)
+  (if (string-match "github.com/repos/[^/]+/\\([^/]+\\)" url)
       (match-string 1 url)
     "<project name>"))
 

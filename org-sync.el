@@ -10,7 +10,7 @@
 ;;   :sync 'delete ;; or 'change 'conflict-local 'conflict-remote 'same (= nil)
 ;;   :title "foo"
 ;;   :desc "blah"
-;;   :priority 0 ;; up to 4 for max priority
+;;   :priority "major"
 ;;   :tags ("a" "b" "c")
 ;;   :author "Aurélien"
 ;;   :assignee "Foo"
@@ -33,6 +33,10 @@
 (defvar os-backend
   nil
   "Org-sync current backend.")
+
+(defvar os-base-url
+  nil
+  "Org-sync current base url.")
 
 (defun os-action-fun (action)
   "Return current backend ACTION function or nil."
@@ -83,21 +87,33 @@
 (defmacro os-with-backend (backend &rest body)
   "Eval BODY with os-backend set to corresponding BACKEND.
 
-If BACKEND evals to a string, it is passed to os-get-backend.
-Else BACKEND should be a backend symbol."
+If BACKEND evals to a string it is passed to os-get-backend, the
+resulting symbol is dynamically assigned to os-backend. The url
+is passed to os--base-url and dynamically assigned to
+os-base-url.
+
+Else BACKEND should be a backend symbol. It is
+assigned to os-backend."
   (declare (indent 1))
-  (let* ((res (eval backend)))
+  (let* ((res (eval backend))
+         (url))
      (when (stringp res)
-      (setq res (os-get-backend res)))
+      (setq url res)
+      (setq res (os-get-backend url)))
     (unless (symbolp res)
       (error "Backend %s does not evaluate to a symbol." backend))
 
-    `(let ((os-backend ',res))
+    `(let* ((os-backend ',res)
+            (os-base-url (os--base-url url)))
        ,@body)))
 
 (os-defun-overridable os--backend-buglist-properties ()
   "Return a list of backend specific buglist properties (symbols)"
   '())
+
+(os-defun-overridable os--base-url (url)
+  "Return the base url of URL."
+  url)
 
 (defconst os-bug-properties
   '(id status title priority tags date-deadline date-creation
@@ -124,7 +140,7 @@ Else BACKEND should be a backend symbol."
   "Send a BUGLIST on the bugtracker and return an updated buglist."
   (error "No send backend selected."))
 
-(os-defun-overridable os--fetch-buglist (repo)
+(os-defun-overridable os--fetch-buglist ()
   "Return the buglist at url REPO."
   (error "No fetch backend selected."))
 
@@ -320,7 +336,7 @@ If KEY is already equal to VAL, no change is made."
   (interactive "sURL: ")
 
   (os-with-backend url
-   (let* ((buglist (os--fetch-buglist url))
+   (let* ((buglist (os--fetch-buglist))
           (elem (os-buglist-to-element buglist))
           (bug-keyword '(sequence "OPEN" "|" "CLOSED")))
      (save-excursion
@@ -476,7 +492,7 @@ The form of the alist is ((:property . (valueA valueB)...)"
              (url (os-get-prop :url local)))
 
         (os-with-backend url
-          (let* ((remote (os--fetch-buglist url))
+          (let* ((remote (os--fetch-buglist))
                  (merged (os-merge-buglist local remote))
                  (updated)
                  (new-headline))

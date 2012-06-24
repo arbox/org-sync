@@ -30,20 +30,19 @@ decoded response in JSON."
       (goto-char url-http-end-of-headers)
       (prog1 (json-read) (kill-buffer)))))
 
-
-(defun os-bb-buglist-url (repo)
-  "Return the issue API URL for REPO."
+;; override
+(defun os-bb-base-url (url)
+  "Return base URL."
   (cond
-   ;; web ui url -- convert to api
-   ((string-match "bitbucket\\.org/\\([^/]+\\)/\\([^/]+\\)/?$" repo)
-    (format "https://api.bitbucket.org/1.0/repositories/%s/%s/issues/"
-            (match-string 1 repo)
-            (match-string 2 repo)))
-
-   ;; api url -- already ok, return it
-   ((string-match "^https://api\\.bitbucket\\.org/1.0/repositories/[^/]+/[^/]+/issues/$" repo)
-    repo)))
-
+   ;; web ui url
+  ((string-match "^\\(?:http://\\)?\\(?:www\\.\\)?bitbucket.org/\\([^/]+\\)/\\([^/]+\\)/?$" url)
+   (concat "https://api.bitbucket.org/1.0/repositories/"
+           (match-string 1 url) "/" (match-string 2 url)))
+  
+  ;; api url
+  ((string-match "api.bitbucket.org/1.0/repositories")
+   url)))
+  
 (defun os-bb-json-to-bug (json)
   "Return JSON as a bug."
   (flet ((va (key alist) (cdr (assoc key alist)))
@@ -101,14 +100,14 @@ decoded response in JSON."
     (match-string 1 url)))
 
 ;; override
-(defun os-bb-fetch-buglist (repo)
-  "Return the buglist at url REPO."
-  (let* ((url (os-bb-buglist-url repo))
+(defun os-bb-fetch-buglist ()
+  "Return the buglist at os-base-url."
+  (let* ((url (concat os-base-url "/issues"))
          (json (os-bb-request "GET" url))
          (title (concat "Bugs of " (os-bb-repo-name url))))
 
     `(:title ,title
-             :url ,url
+             :url ,os-base-url
              :bugs ,(mapcar 'os-bb-json-to-bug (cdr (assoc 'issues json))))))
 
 
@@ -151,16 +150,13 @@ decoded response in JSON."
 ;; override
 (defun os-bb-send-buglist (buglist)
   "Send a BUGLIST on the bugtracker and return an updated buglist."
-  (let* ((url (os-bb-buglist-url (os-get-prop :url buglist)))
-         (user (os-bb-repo-user url))
-         (repo (os-bb-repo-name url))
-         (new-url url)
+  (let* ((new-url (concat os-base-url "/issues"))
          (new-bugs
           (mapcar (lambda (b)
                     (let* ((sync (os-get-prop :sync b))
                            (id (os-get-prop :id b))
                            (data (os-bb-post-encode (os-bb-bug-to-form b)))
-                           (modif-url (format "%s%d/" new-url id))
+                           (modif-url (format "%s/%d/" new-url id))
                            (result
                             (cond
                              ;; new bug

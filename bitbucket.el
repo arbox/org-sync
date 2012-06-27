@@ -1,8 +1,7 @@
 ;; bitbucket backend
 (require 'org-sync)
 
-(defcustom os-bb-auth
-  nil
+(defcustom os-bb-auth nil
   "Bitbucket login (\"user\" . \"pwd\")")
 
 (defun os-bb-request (method url &optional data)
@@ -38,11 +37,11 @@ decoded response in JSON."
   ((string-match "^\\(?:http://\\)?\\(?:www\\.\\)?bitbucket.org/\\([^/]+\\)/\\([^/]+\\)/?$" url)
    (concat "https://api.bitbucket.org/1.0/repositories/"
            (match-string 1 url) "/" (match-string 2 url)))
-  
+
   ;; api url
-  ((string-match "api.bitbucket.org/1.0/repositories")
+  ((string-match "api.bitbucket.org/1.0/repositories" url)
    url)))
-  
+
 (defun os-bb-json-to-bug (json)
   "Return JSON as a bug."
   (flet ((va (key alist) (cdr (assoc key alist)))
@@ -70,16 +69,74 @@ decoded response in JSON."
             :date-creation ,ctime
             :date-modification ,mtime))))
 
+
+
+;; From https://confluence.atlassian.com/display/BITBUCKET/Issues
+
+;;     title: The title of the new issue.
+;;     content: The content of the new issue.
+;;     component: The component associated with the issue.
+;;     milestone: The milestone associated with the issue.
+;;     version: The version associated with the issue.
+;;     responsible: The username of the person responsible for the issue.
+
+;;     priority: The priority of the issue. Valid priorities are:
+;;     - trivial
+;;     - minor
+;;     - major
+;;     - critical
+;;     - blocker
+
+;;     status: The status of the issue. Valid statuses are:
+;;     - new
+;;     - open
+;;     - resolved
+;;     - on hold
+;;     - invalid
+;;     - duplicate
+;;     - wontfix
+
+;;     kind: The kind of issue. Valid kinds are:
+;;     - bug
+;;     - enhancement
+;;     - proposal
+;;     - task
+
+(defconst os-bb-priority-list
+  '("trivial" "minor" "major" "critical" "blocker")
+  "List of valid priority for a bitbucket issue.")
+
+(defconst os-bb-status-list
+  '("new" "open" "resolved" "on hold" "invalid" "duplicate" "wontfix")
+  "List of valid status for a bitbucket issue.")
+
+(defconst os-bb-kind-list
+  '("bug" "enhancement" "proposal" "task")
+  "List of valid kind for a bitbucket issue.")
+
 (defun os-bb-bug-to-form (bug)
   "Return BUG as an form alist."
-  (let* ((title (os-get-prop :title bug))
+  (let* ((priority (os-get-prop :priority bug))
+         (title (os-get-prop :title bug))
          (desc (os-get-prop :desc bug))
          (assignee (os-get-prop :assignee bug))
-         (status (if (eq (os-get-prop :status bug) 'open) "open" "resolved")))
-    `(("title" . ,title)
-      ("status" . ,status)
-      ("content" . ,desc)
-      ("responsible" . ,assignee))))
+         (status (if (eq (os-get-prop :status bug) 'open) "open" "resolved"))
+         (kind (os-get-prop :kind bug)))
+
+    (unless (member priority os-bb-priority-list)
+      (error "Invalid priority \"%s\" at bug \"%s\"." priority title))
+
+    (unless (member kind os-bb-kind-list)
+      (error "Invalid kind \"%s\" at bug \"%s\"." kind title))
+
+    (remove-if (lambda (x)
+                 (null (cdr x)))
+               `(("title"       . ,title)
+                 ("status"      . ,status)
+                 ("content"     . ,desc)
+                 ("responsible" . ,assignee)
+                 ("priority"    . ,priority)
+                 ("kind"        . ,kind)))))
 
 (defun os-bb-post-encode (args)
   "Return form alist ARGS as a url-encoded string."

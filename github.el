@@ -7,7 +7,7 @@
   "Github login (\"user\" . \"pwd\")")
 
 ;; override
-(defun os-github-fetch-buglist ()
+(defun os-github-fetch-buglist (last-update)
   "Return the buglist at os-base-url."
   (let* ((url (concat os-base-url "/issues?per_page=100"))
          (json (vconcat (os-github-fetch-json url)

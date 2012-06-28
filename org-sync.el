@@ -140,7 +140,7 @@ assigned to os-backend."
   "Send a BUGLIST on the bugtracker and return an updated buglist."
   (error "No send backend selected."))
 
-(os-defun-overridable os--fetch-buglist ()
+(os-defun-overridable os--fetch-buglist (last-update)
   "Return the buglist at url REPO."
   (error "No fetch backend selected."))
 
@@ -336,7 +336,7 @@ If KEY is already equal to VAL, no change is made."
   (interactive "sURL: ")
 
   (os-with-backend url
-   (let* ((buglist (os--fetch-buglist))
+   (let* ((buglist (os--fetch-buglist nil))
           (elem (os-buglist-to-element buglist))
           (bug-keyword '(sequence "OPEN" "|" "CLOSED")))
      (save-excursion
@@ -371,6 +371,21 @@ If KEY is already equal to VAL, no change is made."
               (os-get-prop :bugs buglist))))
     (delete-dups ids)
     (/= len (length ids))))
+
+(defun os-time-max (&rest timelist)
+  "Return the largest time in TIMELIST."
+  (reduce (lambda (a b)
+            (if (and a b)
+                (if (time-less-p a b) b a))
+            (or a b))
+          timelist))
+
+(defun os-buglist-last-update (buglist)
+  "Return the most recent creation/modi date in BUGLIST."
+  (os-time-max (mapcar (lambda (x)
+                         (os-time-max (os-get-prop :date-creation x)
+                                      (os-get-prop :date-modification x)))
+                       (os-get-prop :bugs buglist))))
 
 (defun os-merge-buglist (local remote)
   "Return a buglist merged from buglist LOCAL & REMOTE."
@@ -489,10 +504,11 @@ The form of the alist is ((:property . (valueA valueB)...)"
 
     (dolist (headline local-headlines)
       (let* ((local (os-headline-to-buglist headline))
-             (url (os-get-prop :url local)))
+             (url (os-get-prop :url local))
+             (last-update (os-buglist-last-update local)))
 
         (os-with-backend url
-          (let* ((remote (os--fetch-buglist))
+          (let* ((remote (os--fetch-buglist last-update))
                  (merged (os-merge-buglist local remote))
                  (updated)
                  (new-headline))

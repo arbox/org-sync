@@ -157,7 +157,7 @@ decoded response in JSON."
     (match-string 1 url)))
 
 ;; override
-(defun os-bb-fetch-buglist ()
+(defun os-bb-fetch-buglist (last-update)
   "Return the buglist at os-base-url."
   (let* ((url (concat os-base-url "/issues"))
          (json (os-bb-request "GET" url))

@@ -9,14 +9,17 @@
 ;; override
 (defun os-github-fetch-buglist (last-update)
   "Return the buglist at os-base-url."
-  (let* ((url (concat os-base-url "/issues?per_page=100"))
+  (let* ((since (when last-update
+                  (format "&since=%s" (os-time-to-string last-update))))
+         (url (concat os-base-url "/issues?per_page=100" since))
          (json (vconcat (os-github-fetch-json url)
                         (os-github-fetch-json (concat url "&state=closed"))))
          (title (concat "Bugs of " (os-github-repo-name url))))
 
     `(:title ,title
              :url ,os-base-url
-             :bugs ,(mapcar 'os-github-json-to-bug json))))
+             :bugs ,(mapcar 'os-github-json-to-bug json)
+             :since last-update)))
 
 ;; override
 (defun os-github-base-url (url)

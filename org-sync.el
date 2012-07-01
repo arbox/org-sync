@@ -231,7 +231,7 @@ BUGLIST in ELEM by BUGLIST."
                  :properties
                  (car (org-element-contents
                        (car (org-element-contents h))))))
-         (title (org-element-property :title h))
+         (title (car (org-element-property :title h)))
          (url (cdr (assoc "url" alist))))
     `(:title ,title
              :url ,url
@@ -361,16 +361,19 @@ If KEY is already equal to VAL, no change is made."
           (os-get-prop :bugs buglist))
     nil))
 
-(defun os-buglist-contains-dups (buglist)
-  "Return t if BUGLIST contains bugs with the same id."
-  (let* ((len 0)
-         (ids (mapcar
-              (lambda (x)
-                (incf len)
-                (os-get-prop :id x))
-              (os-get-prop :bugs buglist))))
-    (delete-dups ids)
-    (/= len (length ids))))
+(defun os-buglist-dups (buglist)
+  "Return non-nil if BUGLIST contains bugs with the same id.
+The value returned is a list of duplicated ids."
+  (let ((hash (make-hash-table))
+        (dups))
+    (mapc (lambda (x)
+            (let ((id (os-get-prop :id x)))
+              (puthash id (1+ (gethash id hash 0)) hash)))              
+          (os-get-prop :bugs buglist))
+    (maphash (lambda (id nb)
+               (when (> nb 1)
+                 (push id dups))) hash)
+    dups))
 
 (defun os-time-max (&rest timelist)
   "Return the largest time in TIMELIST."
@@ -382,19 +385,16 @@ If KEY is already equal to VAL, no change is made."
 
 (defun os-buglist-last-update (buglist)
   "Return the most recent creation/modi date in BUGLIST."
-  (os-time-max (mapcar (lambda (x)
-                         (os-time-max (os-get-prop :date-creation x)
-                                      (os-get-prop :date-modification x)))
-                       (os-get-prop :bugs buglist))))
+  (apply 'os-time-max (loop for x in (os-get-prop :bugs buglist)
+                            collect (os-get-prop :date-creation x) and
+                            collect (os-get-prop :date-modification x))))
 
 (defun os-merge-buglist (local remote)
   "Return a buglist merged from buglist LOCAL & REMOTE."
-  (let* ((local-bugs (os-get-prop :bugs local))
+  (let* ((since (os-get-prop :since remote))
+         (local-bugs (os-get-prop :bugs local))
          (remote-bugs (os-get-prop :bugs remote))
          (merged-bugs))
-
-    (when (os-buglist-contains-dups local)
-      (error "Buglist \"%s\" contains unmerged bugs." (car (os-get-prop :title local))))
 
     ;; A. handle local bugs and fill the merged-bugs list
     (dolist (loc local-bugs)
@@ -402,15 +402,26 @@ If KEY is already equal to VAL, no change is made."
              (rem (os-get-bug-id remote id)))
 
         (cond
-         ;; if the bug doesn't exist in remote, it's a new one or it
-         ;; was deleted
+         ;; if the bug doesn't exist in remote:
          ((null rem)
-          ;; if the remote bug doesn't exist but the local one has a
-          ;; valid id, it means the remote one was deleted, ignore it
-          (unless (and (numberp id) (>= id 0))
-            (os-set-prop :sync 'new loc)
-            (setq merged-bugs (append merged-bugs (list loc)))))
+          (cond
 
+           ;; if local id is invalid, push local as a new bug on
+           ;; remote
+           ((not (and (numberp id) (>= id 0)))
+            (os-set-prop :sync 'new loc)
+            (setq merged-bugs (append merged-bugs (list loc))))
+
+           ;; if local id is valid & fetch was partial, local didn't
+           ;; change: keep it
+           (since
+            (os-set-prop :sync 'same loc)
+            (setq merged-bugs (append merged-bugs (list loc))))
+
+           ;; else, the bug was deleted on remote: don't append it to
+           ;; the merged bugs list
+           (t nil)))
+           
          ;; if the bug was marked to be deleted, insert it but don't
          ;; display it
          ((eq 'delete (os-get-prop :sync loc))
@@ -506,6 +517,9 @@ The form of the alist is ((:property . (valueA valueB)...)"
       (let* ((local (os-headline-to-buglist headline))
              (url (os-get-prop :url local))
              (last-update (os-buglist-last-update local)))
+
+        (when (os-buglist-dups local)
+          (error "Buglist \"%s\" contains unmerged bugs." (os-get-prop :title local)))
 
         (os-with-backend url
           (let* ((remote (os--fetch-buglist last-update))

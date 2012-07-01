@@ -368,7 +368,7 @@ The value returned is a list of duplicated ids."
         (dups))
     (mapc (lambda (x)
             (let ((id (os-get-prop :id x)))
-              (puthash id (1+ (gethash id hash 0)) hash)))              
+              (puthash id (1+ (gethash id hash 0)) hash)))
           (os-get-prop :bugs buglist))
     (maphash (lambda (id nb)
                (when (> nb 1)
@@ -421,7 +421,7 @@ The value returned is a list of duplicated ids."
            ;; else, the bug was deleted on remote: don't append it to
            ;; the merged bugs list
            (t nil)))
-           
+
          ;; if the bug was marked to be deleted, insert it but don't
          ;; display it
          ((eq 'delete (os-get-prop :sync loc))

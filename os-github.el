@@ -28,9 +28,13 @@
 
 ;;; Code:
 
+(require 'url)
+(eval-when-compile (require 'cl))
 (require 'org-sync)
 
-(defcustom os-github-auth
+(defvar url-http-end-of-headers)
+
+(defvar os-github-auth
   nil
   "Github login (\"user\" . \"pwd\")")
 

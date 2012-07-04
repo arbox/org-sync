@@ -57,7 +57,7 @@
 ;;; Code:
 
 (require 'org-element)
-(require 'cl)
+(eval-when-compile (require 'cl))
 (require 'json)
 (require 'url)
 
@@ -126,34 +126,20 @@ os-base-url.
 Else BACKEND should be a backend symbol. It is
 assigned to os-backend."
   (declare (indent 1))
-  (let* ((res (eval backend))
-         (url))
-     (when (stringp res)
-      (setq url res)
-      (setq res (os-get-backend url)))
-    (unless (symbolp res)
-      (error "Backend %s does not evaluate to a symbol." backend))
-
-    `(let* ((os-backend ',res)
-            (os-base-url (os--base-url url)))
-       ,@body)))
-
-(os-defun-overridable os--backend-buglist-properties ()
-  "Return a list of backend specific buglist properties (symbols)"
-  '())
-
-(os-defun-overridable os--base-url (url)
-  "Return the base url of URL."
-  url)
-
-(defconst os-bug-properties
-  '(id status title priority tags date-deadline date-creation
-       date-modification author assignee desc milestone)
-  "List of shared bug properties.")
-
-(os-defun-overridable os--backend-bug-properties ()
-  "Return a list of backend specific bug properties (symbols)"
-  '())
+  (let ((res (gensym))
+        (url (gensym)))
+    
+    `(let* ((,res ,backend)
+            (,url))
+       (when (stringp ,res)
+         (setq ,url ,res)
+         (setq ,res (os-get-backend ,url)))
+       (unless (symbolp ,res)
+         (error "Backend %s does not evaluate to a symbol."
+                (prin1-to-string ',backend)))
+       (let* ((os-backend ,res)
+              (os-base-url (os--base-url ,url)))
+         ,@body))))
 
 (defun os-propertize (sym)
   "Return sym as a property i.e. prefixed with :."
@@ -231,16 +217,6 @@ If a property starts with \"date-\", the value is formated as an ISO 8601."
          (property-drawer
           (:properties ,prop-alist))
          (paragraph nil ,(os-get-prop :desc b)))))))
-
-(defun os-replace-buglist (elem buglist)
-  "Replace first occurence of the buglist with the same url as
-BUGLIST in ELEM by BUGLIST."
-  (let* ((url (os-headline-url buglist))
-         (old (os-find-buglist elem url)))
-    (when (and url old buglist)
-      (setcar old (car buglist))
-      (setcdr old (cdr buglist))
-      elem)))
 
 (defun os-headline-url (e)
   "Returns the url of the buglist in headline E."
@@ -365,7 +341,6 @@ If KEY is already equal to VAL, no change is made."
 (defun os-import (url)
   "Fetch and insert bugs from URL."
   (interactive "sURL: ")
-
   (os-with-backend url
    (let* ((buglist (os--fetch-buglist nil))
           (elem (os-buglist-to-element buglist))

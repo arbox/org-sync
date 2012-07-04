@@ -28,9 +28,13 @@
 
 ;;; Code:
 
+(eval-when-compile (require 'cl))
 (require 'org-sync)
+(require 'url)
 
-(defcustom os-bb-auth nil
+(defvar url-http-end-of-headers)
+
+(defvar os-bb-auth nil
   "Bitbucket login (\"user\" . \"pwd\")")
 
 (defun os-bb-request (method url &optional data)
@@ -70,34 +74,6 @@ decoded response in JSON."
   ;; api url
   ((string-match "api.bitbucket.org/1.0/repositories" url)
    url)))
-
-(defun os-bb-json-to-bug (json)
-  "Return JSON as a bug."
-  (flet ((va (key alist) (cdr (assoc key alist)))
-         (v (key) (va key json)))
-    (let* ((id (v 'local_id))
-           (author (va 'username (v 'reported_by)))
-           (assignee (va 'username (v 'responsible)))
-           (txtstatus (v 'status))
-           (status (if (or (string= txtstatus "open")
-                           (string= txtstatus "new"))
-                       'open
-                     'closed))
-           (title (v 'title))
-           (desc (v 'content))
-           (priority 2)
-           (ctime (v 'utc_created_on))
-           (mtime (v 'utc_last_updated)))
-
-      `(:id ,id
-            :assignee ,assignee
-            :status ,status
-            :title ,title
-            :desc ,desc
-            :date-deadline ,dtime
-            :date-creation ,ctime
-            :date-modification ,mtime))))
-
 
 
 ;; From https://confluence.atlassian.com/display/BITBUCKET/Issues
@@ -268,7 +244,7 @@ decoded response in JSON."
                   (os-get-prop :bugs buglist))))
 
     `(:title ,(os-get-prop :title buglist)
-             :url ,url
+             :url ,os-base-url
              :bugs ,new-bugs)))
 
 ;;; os-bb.el ends here

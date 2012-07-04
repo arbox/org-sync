@@ -1,3 +1,32 @@
+;;; org-sync.el --- Synchronize Org documents with external services
+
+;; Copyright (C) 2012  Aurelien Aptel
+;;
+;; Author: Aurelien Aptel <aurelien dot aptel at gmail dot com>
+;; Keywords: org, synchronization
+;; Homepage: http://orgmode.org/worg/org-contrib/gsoc2012/student-projects/org-sync
+;;
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; This file is not part of GNU Emacs.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+;;
+;; This package implements an extension to org-mode that synchnonizes
+;; org document with external services. It provides an interface that
+;; can be implemented in backends.
+
 ;; buglist data structure
 
 ;; '(:title "My buglist"
@@ -24,6 +53,8 @@
 ;;   ;; backend-specific properties
 ;;   ;; ...
 ;;   )
+
+;;; Code:
 
 (require 'org-element)
 (require 'cl)
@@ -557,3 +588,4 @@ The form of the alist is ((:property . (valueA valueB)...)"
           (goto-char oldpoint))))
 
 (provide 'org-sync)
+;;; org-sync.el ends here

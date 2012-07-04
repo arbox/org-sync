@@ -1,4 +1,32 @@
-;; github backend
+;;; os-github.el --- Redmine backend for org-sync.
+
+;; Copyright (C) 2012  Aurelien Aptel
+;;
+;; Author: Aurelien Aptel <aurelien dot aptel at gmail dot com>
+;; Keywords: org, github, synchronization
+;; Homepage: http://orgmode.org/worg/org-contrib/gsoc2012/student-projects/org-sync
+;;
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; This file is not part of GNU Emacs.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+;;
+;; This package implements a backend for org-sync to synchnonize
+;; issues from a github tracker with an org-mode buffer.
+
+;;; Code:
 
 (require 'org-sync)
 
@@ -186,3 +214,5 @@ decoded response in JSON."
      (assignee . ,(os-get-prop :assignee bug))
      (state . ,(symbol-name (os-get-prop :status bug)))
      (labels . [ ,@(os-get-prop :tags bug) ]))))
+
+;;; os-github.el ends here

@@ -161,6 +161,10 @@ assigned to os-backend."
   "Return the buglist at url REPO."
   (error "No fetch backend selected."))
 
+(os-defun-overridable os--base-url (url)
+  "Return the base url of URL."
+  url)
+
 (defun os-buglist-to-element (bl)
   "Return buglist BL as an element."
   (let* ((elist (delq nil (mapcar 'os-bug-to-element (os-get-prop :bugs bl))))

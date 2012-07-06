@@ -128,10 +128,10 @@ decoded response in JSON."
          (status (if (eq (os-get-prop :status bug) 'open) "open" "resolved"))
          (kind (os-get-prop :kind bug)))
 
-    (unless (member priority os-bb-priority-list)
+    (if (and priority (not (member priority os-bb-priority-list)))
       (error "Invalid priority \"%s\" at bug \"%s\"." priority title))
 
-    (unless (member kind os-bb-kind-list)
+    (if (and kind (not (member kind os-bb-kind-list)))
       (error "Invalid kind \"%s\" at bug \"%s\"." kind title))
 
     (remove-if (lambda (x)

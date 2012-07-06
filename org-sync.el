@@ -210,6 +210,10 @@ If a property starts with \"date-\", the value is formated as an ISO 8601."
                            collect (cons (substring (symbol-name a) 1)
                                          (prin1-to-string b)))))
     (unless (eq 'delete (os-get-prop :sync b))
+      ;; sort PROPERTIES by property name
+      (setq prop-alist (sort prop-alist
+                             (lambda (a b)
+                               (string< (car b) (car a)))))
       `(headline
         (:title ,(os-get-prop :title b)
                 :level 2

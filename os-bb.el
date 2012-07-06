@@ -67,7 +67,7 @@ decoded response in JSON."
   "Return base URL."
   (cond
    ;; web ui url
-  ((string-match "^\\(?:http://\\)?\\(?:www\\.\\)?bitbucket.org/\\([^/]+\\)/\\([^/]+\\)/?$" url)
+  ((string-match "^\\(?:https?://\\)?\\(?:www\\.\\)?bitbucket.org/\\([^/]+\\)/\\([^/]+\\)/?$" url)
    (concat "https://api.bitbucket.org/1.0/repositories/"
            (match-string 1 url) "/" (match-string 2 url)))
 

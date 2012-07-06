@@ -153,6 +153,20 @@ assigned to os-backend."
   "Set KEY to VAL in buglist or bug B."
   (plist-put b key val))
 
+(defun os-append! (elem list)
+  "Add ELEM at the end of LIST by side effect if it is not
+already present.
+
+Return ELEM if it was added, nil otherwise."
+  (catch :exit
+    (let ((p list))
+      (while (cdr p)
+        (when (equal (car p) elem)
+          (throw :exit nil))
+        (setq p (cdr p)))
+      (setcdr p (cons elem nil))
+      elem)))
+
 (os-defun-overridable os--send-buglist (buglist)
   "Send a BUGLIST on the bugtracker and return an updated buglist."
   (error "No send backend selected."))

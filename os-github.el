@@ -34,9 +34,47 @@
 
 (defvar url-http-end-of-headers)
 
-(defvar os-github-auth
-  nil
+(defvar os-github-auth nil
   "Github login (\"user\" . \"pwd\")")
+
+(defun os-github-fetch-labels ()
+  "Return list of labels at os-base-url."
+  (let* ((url (concat os-base-url "/labels"))
+         (json (os-github-fetch-json url)))
+    (mapcar (lambda (x)
+              (cdr (assoc 'name x)))
+            json)))
+
+(defun os-github-random-color ()
+  "Return a random hex color code 6 characters string without the #."
+  (random t)
+  (format "%02X%02X%02X" (random 256) (random 256) (random 256)))
+
+(defun os-github-color-p (color)
+  "Return non-nil if COLOR is a valid color code."
+  (and (stringp color) (string-match "^[0-9a-fA-F]\\{6\\}$" color)))
+
+(defun os-github-create-label (label &optional color)
+  "Create new COLOR LABEL at os-base-url and return it.
+
+LABEL must be a string. COLOR must be a 6 characters string
+containing a hex color code without the #. Take a random color
+when not given."
+  (let* ((url (concat os-base-url "/labels"))
+         (json (json-encode `((name . ,label)
+                              (color . ,(if (os-github-color-p color)
+                                            color
+                                          (os-github-random-color)))))))
+    (os-github-request "POST" url json)))
+
+(defun os-github-handle-tags (bug existing-tags)
+  "Create any label in BUG that is not in EXISTING-TAGS.
+
+Append new tags in EXISTING-TAGS by side effects."
+  (let* ((tags (os-get-prop :tags bug)))
+    (dolist (t tags)
+      (when (os-append! (t existing-tags))
+        (os-github-create-label t)))))
 
 ;; override
 (defun os-github-fetch-buglist (last-update)
@@ -65,6 +103,7 @@
 (defun os-github-send-buglist (buglist)
   "Send a BUGLIST on the bugtracker and return an updated buglist."
   (let* ((new-url (concat os-base-url "/issues"))
+         (existing-tags (os-github-fetch-labels))
          (new-bugs
           (mapcar (lambda (b)
                     (let* ((sync (os-get-prop :sync b))
@@ -75,6 +114,7 @@
                             (cond
                              ;; new bug
                              ((eq sync 'new)
+                              (os-github-handle-tags b existing-tags)
                               (os-github-request "POST" new-url data))
 
                              ;; delete bug
@@ -83,6 +123,7 @@
 
                              ;; update bug
                              ((eq sync 'change)
+                              (os-github-handle-tags b existing-tags)
                               (os-github-request "PATCH" modif-url data))))
                            (err (cdr (assoc 'message result))))
 
@@ -149,7 +190,7 @@
 (defun os-github-request (method url &optional data)
   "Send HTTP request at URL using METHOD with DATA.
 AUTH is a cons (\"user\" . \"pwd\"). Return the server
-decoded response in JSON."
+decoded JSON response."
   (let* ((url-request-method method)
          (url-request-data data)
          (auth os-github-auth)

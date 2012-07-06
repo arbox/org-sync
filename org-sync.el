@@ -128,7 +128,7 @@ assigned to os-backend."
   (declare (indent 1))
   (let ((res (gensym))
         (url (gensym)))
-    
+
     `(let* ((,res ,backend)
             (,url))
        (when (stringp ,res)
@@ -359,7 +359,8 @@ If KEY is already equal to VAL, no change is made."
 
          ;; the buffer has to be reparsed in order to have the new
          ;; keyword taken into account
-         (os-org-reparse))))))
+         (os-org-reparse)))))
+  (message "Import complete."))
 
 (defun os-get-bug-id (buglist id)
   "Return bug ID from BUGLIST."
@@ -563,7 +564,9 @@ The form of the alist is ((:property . (valueA valueB)...)"
           (delete-region (point-min) (point-max))
           (goto-char (point-min))
           (insert (org-element-interpret-data local-doc))
-          (goto-char oldpoint))))
+          (goto-char oldpoint))
+
+        (message "Synchronization complete.")))
 
 (provide 'org-sync)
 ;;; org-sync.el ends here

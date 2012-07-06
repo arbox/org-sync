@@ -169,13 +169,12 @@ assigned to os-backend."
   "Return buglist BL as an element."
   (let* ((elist (delq nil (mapcar 'os-bug-to-element (os-get-prop :bugs bl))))
          (title (os-get-prop :title bl))
-         (url (os-get-prop :url bl))
-         (backend-props (os-plist (os--backend-buglist-properties) bl)))
+         (url (os-get-prop :url bl)))
     `(headline
       (:level 1 :title (,title))
       (section
        nil
-       (property-drawer (:properties (("url" . ,url) ,@backend-props))))
+       (property-drawer (:properties (("url" . ,url)))))
       ,@elist)))
 
 (defun os-filter-list (list minus)

@@ -109,7 +109,7 @@ Append new tags in EXISTING-TAGS by side effects."
                     (let* ((sync (os-get-prop :sync b))
                            (id (os-get-prop :id b))
                            (data (os-github-bug-to-json b))
-                           (modif-url (format "%s/%d" new-url id))
+                           (modif-url (format "%s/%d" new-url (or id 0)))
                            (result
                             (cond
                              ;; new bug

@@ -545,7 +545,7 @@ The form of the alist is ((:property . (valueA valueB)...)"
     (dolist (headline local-headlines)
       (let* ((local (os-headline-to-buglist headline))
              (url (os-get-prop :url local))
-             (last-update (os-buglist-last-update local)))
+             (last-update))
 
         (when (os-buglist-dups local)
           (error "Buglist \"%s\" contains unmerged bugs." (os-get-prop :title local)))

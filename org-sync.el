@@ -364,12 +364,13 @@ If KEY is already equal to VAL, no change is made."
 
 (defun os-get-bug-id (buglist id)
   "Return bug ID from BUGLIST."
-  (catch :exit
-    (mapc (lambda (x)
-            (when (= (os-get-prop :id x) id)
-              (throw :exit x)))
-          (os-get-prop :bugs buglist))
-    nil))
+  (when id
+      (catch :exit
+        (mapc (lambda (x)
+                (when (= (os-get-prop :id x) id)
+                  (throw :exit x)))
+              (os-get-prop :bugs buglist))
+        nil)))
 
 (defun os-buglist-dups (buglist)
   "Return non-nil if BUGLIST contains bugs with the same id.

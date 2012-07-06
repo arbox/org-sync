@@ -73,7 +73,7 @@ when not given."
 Append new tags in EXISTING-TAGS by side effects."
   (let* ((tags (os-get-prop :tags bug)))
     (dolist (tag tags)
-      (when (os-append! (tag existing-tags))
+      (when (os-append! tag existing-tags)
         (os-github-create-label tag)))))
 
 ;; override

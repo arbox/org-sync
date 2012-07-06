@@ -218,7 +218,7 @@ decoded response in JSON."
                     (let* ((sync (os-get-prop :sync b))
                            (id (os-get-prop :id b))
                            (data (os-bb-post-encode (os-bb-bug-to-form b)))
-                           (modif-url (format "%s/%d/" new-url id))
+                           (modif-url (format "%s/%d/" new-url (or id 0)))
                            (result
                             (cond
                              ;; new bug

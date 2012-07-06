@@ -72,9 +72,9 @@ when not given."
 
 Append new tags in EXISTING-TAGS by side effects."
   (let* ((tags (os-get-prop :tags bug)))
-    (dolist (t tags)
-      (when (os-append! (t existing-tags))
-        (os-github-create-label t)))))
+    (dolist (tag tags)
+      (when (os-append! (tag existing-tags))
+        (os-github-create-label tag)))))
 
 ;; override
 (defun os-github-fetch-buglist (last-update)

@@ -1,0 +1,91 @@
+* Introduction
+
+Org-sync is a tool to synchronize online bugtrackers with org
+documents.
+
+* Tutorial
+
+Make sure you have org-element.el (it's in the contrib directory of
+org-mode) and load org-sync.el, os-bb.el and os-github.el.
+
+Next, open a new org-mode buffer and run =M-x os-import=. It prompts
+you for an URL. You can try my github test repo:
+github.com/ostesting/test. Org-sync should import the issues from the repo.
+
+Now, let's try to add a new issue. First you have to set a
+user/password to be able to modify the issue remotely.
+
+Set the variable os-github-auth to like so:
+=(setq os-github-auth '("ostesting" . "thisisostesting42"))=
+
+Try to add another issue e.g. insert =** OPEN my test issue=. You can
+type a description under it if you want.
+
+The next step is simple, just run =M-x os-sync=. It synchronize all
+the buglists in the document.
+
+* How to write a new backend
+
+Writing a new backend is easy. This is the basic template:
+
+#+begin_src emacs-lisp
+;; backend symbol/name: demo
+;; the symbol is used to find and call your backend functions (for now)
+
+;; what kind of urls does you backend handle?
+;; add it to os-backend-alist in org-sync.el:
+
+(defvar os-backend-alist
+  '(("github.com/\\(?:repos/\\)?[^/]+/[^/]+"  . github)
+    ("bitbucket.org/[^/]+/[^/]+"              . bb)
+    ("demo.com"                               . demo)))
+
+;; if you have already loaded org-sync.el, you'll have to add it
+;; manually in that case just eval this in *scratch*
+(add-to-list 'os-backend-alist (cons "demo.com" 'demo))
+
+;; now, in its own file os-demo.el:
+
+(require 'org-sync)
+
+;; this overrides os--base-url.
+;; the argument is the url the user gave.
+;; it must return a cannonical version of the url that will be
+;; available to your backend function in the os-base-url variable.
+
+;; In the github backend, it returns API base url
+;; ie. https://api.github/reposa/<user>/<repo>
+
+(defun os-demo-base-url (url)
+  "Return proper URL."
+  "http://api.demo.com/foo")
+
+;; this overrides os--fetch-buglist
+;; you can use the variable os-base-url
+(defun os-demo-fetch-buglist (last-update)
+  "Fetch buglist from demo.com (anything that happened after LAST-UPDATE)"
+  
+  ;; a buglist is just a plist
+  `(:title "Stuff at demo.com"
+           :url ,os-base-url
+
+           ;; bugs contains a list of bugs
+           ;; a bug is a plist too
+           :bugs ((:id 1 :title "Foo" :status open :desc "bar."))))
+
+;; this overrides os--send-buglist
+(defun os-demo-send-buglist (buglist)
+  "Send BUGLIST to demo.com and return updated buglist"
+  ;; we return the same thing for the demo
+  `(:title "Stuff at demo.com"
+           :url ,os-base-url
+           :bugs ((:id 1 :title "Foo" :status open :desc "bar."))))
+#+end_src
+
+That's it. A bug has to have at least an id, title and status
+properties. Other recognized but optionnal properties are
+=:date-deadline=, =:date-creation=, =:date-modification=, =:desc=. Any
+other properties are automatically added in the PROPERTIES block of
+the bug via =prin1-to-string= and are =read= back by org-sync.
+All the dates are regular emacs time object. For more details you can
+look at the github backend in os-github.el.

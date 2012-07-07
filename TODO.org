@@ -1,7 +1,7 @@
 * Documentation
 
 ** TODO user documentation
-** TODO how to write backends
+** DONE how to write backends
 ** TODO introduction to code
 
 * Org-sync
@@ -16,6 +16,13 @@ Also, find out how to handle charsets, line-ending, etc.
 Some ideas:
 - a single variable maps repo urls to user accounts.
 - each backend use its own variable, more flexible.
+
+** TODO cache parse/fetch result
+Idea:
+- add a variable os-element along with os-base-url that corresponds to
+  a bug represention in org-element.
+
+** TODO replace overridable macro by something simpler
 
 * Backends
 Write backends for some free software.

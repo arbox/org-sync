@@ -56,6 +56,7 @@
 ;;   ;; ...
 ;;   )
 
+(require 'org)
 (require 'org-element)
 (eval-when-compile (require 'cl))
 (require 'json)
@@ -198,24 +199,6 @@ Return ELEM if it was added, nil otherwise."
             (delq x final)) minus)
     final))
 
-(defun os-plist (properties bug &optional prefix)
-  "Return plist of PROPERTIES in bug or buglist BUG.
-
-Prefix property name with : when PREFIX is non-nil.
-If a property starts with \"date-\", the value is formated as an ISO 8601."
-  (let (plist)
-    (dolist (x properties)
-      (let* ((p (os-propertize x))
-             (val (os-get-prop p bug)))
-        (when val
-          (setq plist (cons
-                       (cons (if prefix p x)
-                             (if (os-prop-date-p x)
-                                 (os-time-to-string val)
-                               val))
-                       plist)))))
-    plist))
-
 (defun os-bug-to-element (b)
   "Return bug B as a TODO element if it is visible, nil otherwise."
   ;; not in PROPERTIES block
@@ -328,10 +311,6 @@ If a property starts with \"date-\", the value is formated as an ISO 8601."
               (unless (memq k skip)
                 (setq bug (cons k (cons v bug)))))) headline-alist)
     bug))
-
-(defun os-prop-date-p (sym)
-  "Return non-nil if SYM is a date property (starts with \"date-\")."
-  (string-prefix-p "date-" (symbol-name sym)))
 
 (defun os-find-buglists (elem)
   "Return every buglist headlines in ELEM."

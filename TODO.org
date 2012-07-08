@@ -10,7 +10,9 @@
 ** TODO convert markup to org-mode and reciprocally
 Also, find out how to handle charsets, line-ending, etc.
 
-** TODO use usual deadline timestamp from org-mode
+** DONE use usual deadline timestamp from org-mode
+No backend uses it but it importing/exporting from org-element works.
+
 ** TODO fix date representation
 ** TODO better auth system
 Some ideas:

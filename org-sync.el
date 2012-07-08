@@ -27,6 +27,8 @@
 ;; org document with external services. It provides an interface that
 ;; can be implemented in backends.
 
+;;; Code:
+
 ;; buglist data structure
 
 ;; '(:title "My buglist"
@@ -53,8 +55,6 @@
 ;;   ;; backend-specific properties
 ;;   ;; ...
 ;;   )
-
-;;; Code:
 
 (require 'org-element)
 (eval-when-compile (require 'cl))
@@ -218,7 +218,10 @@ If a property starts with \"date-\", the value is formated as an ISO 8601."
 
 (defun os-bug-to-element (b)
   "Return bug B as a TODO element if it is visible, nil otherwise."
-  (let* ((skip '(:title :status :desc :old-bug)) ;; not in PROPERTIES block
+  ;; not in PROPERTIES block
+  (let* ((skip '(:title :status :desc :old-bug :date-deadline))
+         (title (os-get-prop :title b))
+         (deadline (os-get-prop :date-deadline b))
          (prop-alist (loop for (a b) on b by #'cddr
                            if (and b (not (memq a skip)))
                            collect (cons (substring (symbol-name a) 1)
@@ -228,8 +231,16 @@ If a property starts with \"date-\", the value is formated as an ISO 8601."
       (setq prop-alist (sort prop-alist
                              (lambda (a b)
                                (string< (car b) (car a)))))
+
+
       `(headline
-        (:title ,(os-get-prop :title b)
+        (:title ,(if deadline
+                     (list
+                      (format "%s DEADLINE: " title)
+                      `(timestamp
+                        (:value
+                         ,(format-time-string (org-time-stamp-format)))))
+                   title)
                 :level 2
                 :todo-type todo
                 :todo-keyword ,(upcase (symbol-name (os-get-prop :status b))))
@@ -267,38 +278,56 @@ If a property starts with \"date-\", the value is formated as an ISO 8601."
                      'os-headline-to-bug
                      (nthcdr 1 (org-element-contents h))))))
 
+
 (defun os-headline-to-bug (h)
   "Return headline H as a bug."
-    (let* ((skip '(:status :title :sync :desc))
-           (todo-keyword (org-element-property :todo-keyword h))
-           (status (if (string= "OPEN" todo-keyword) 'open 'closed))
-           (title (car (org-element-property :title h)))
-           (sync (when (string= "DELETE" todo-keyword) 'delete))
-           (section (org-element-contents (car (org-element-contents h))))
-           (desc
-            (org-element-interpret-data
-             (remove-if (lambda (e)
-                          (eq (org-element-type e) 'property-drawer))
-                        section)))
+  (let* ((todo-keyword (org-element-property :todo-keyword h))
+         ;; properties to skip when looking at the PROPERTIES block
+         (skip '(:status :title :sync :desc :date-deadline))
+         (status (if (string= "OPEN" todo-keyword) 'open 'closed))
+         (deadline (os-parse-date (org-element-property :deadline h)))
+         (title (car (org-element-property :title h)))
+         (sync (when (string= "DELETE" todo-keyword) 'delete))
+         (section (org-element-contents (car (org-element-contents h))))
+         (headline-alist (org-element-property
+                          :properties
+                          (car
+                           (org-element-contents
+                            (car (org-element-contents h))))))
+         (desc (org-element-interpret-data
+                (remove-if
+                 (lambda (e)
+                   (let ((type (org-element-type e))
+                         (content (org-element-contents e)))
+                     (or (eq type 'property-drawer)
+                         (and (eq type 'paragraph)
+                              (string-match "^ *DEADLINE: " (car content))))))
+                 section)))
 
-           (headline-alist (org-element-property
-                            :properties
-                            (car
-                             (org-element-contents
-                              (car (org-element-contents h))))))
-           (bug (list
-                 :status status
-                 :title title
-                 :sync sync
-                 :desc desc)))
+         bug)
 
-      (mapc (lambda (x)
-              (let ((k (intern (concat ":" (car x))))
-                    (v (when (and (cdr x) (not (equal (cdr x) "")))
-                         (read (cdr x)))))
-                  (unless (memq k skip)
-                    (setq bug (cons k (cons v bug)))))) headline-alist)
-      bug))
+    ;; deadlines can be either on the same line as the headline or
+    ;; on the next one. org-element doesn't parse it the same way
+    ;; when on the same line, remove DEADLINE tag from title
+    ;; else ignore DEADLINE tag in paragraph
+    (when deadline
+      (setq title (replace-regexp-in-string " DEADLINE: " "" title)))
+
+    (setq bug (list
+               :status status
+               :title title
+               :sync sync
+               :desc desc
+               :date-deadline deadline))
+
+
+    (mapc (lambda (x)
+            (let ((k (intern (concat ":" (car x))))
+                  (v (when (and (cdr x) (not (equal (cdr x) "")))
+                       (read (cdr x)))))
+              (unless (memq k skip)
+                (setq bug (cons k (cons v bug)))))) headline-alist)
+    bug))
 
 (defun os-prop-date-p (sym)
   "Return non-nil if SYM is a date property (starts with \"date-\")."

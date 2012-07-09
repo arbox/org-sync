@@ -31,6 +31,7 @@
 (eval-when-compile (require 'cl))
 (require 'org-sync)
 (require 'url)
+(require 'json)
 
 (defvar url-http-end-of-headers)
 

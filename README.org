@@ -89,3 +89,7 @@ other properties are automatically added in the PROPERTIES block of
 the bug via =prin1-to-string= and are =read= back by org-sync.
 All the dates are regular emacs time object. For more details you can
 look at the github backend in os-github.el.
+
+* More information
+
+You can find more in the org-sync.el commentary headers.

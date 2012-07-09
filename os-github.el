@@ -28,9 +28,10 @@
 
 ;;; Code:
 
-(require 'url)
 (eval-when-compile (require 'cl))
+(require 'url)
 (require 'org-sync)
+(require 'json)
 
 (defvar url-http-end-of-headers)
 

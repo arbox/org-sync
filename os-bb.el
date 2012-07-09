@@ -35,6 +35,12 @@
 
 (defvar url-http-end-of-headers)
 
+(defvar os-bb-backend
+  '((base-url      . os-bb-base-url)
+    (fetch-buglist . os-bb-fetch-buglist)
+    (send-buglist  . os-bb-send-buglist))
+  "Bitbucket backend.")
+
 (defvar os-bb-auth nil
   "Bitbucket login (\"user\" . \"pwd\")")
 

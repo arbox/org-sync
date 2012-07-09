@@ -33,6 +33,12 @@
 (require 'org-sync)
 (require 'json)
 
+(defvar os-github-backend
+  '((base-url      . os-github-base-url)
+    (fetch-buglist . os-github-fetch-buglist)
+    (send-buglist  . os-github-send-buglist))
+  "Github backend.")
+
 (defvar url-http-end-of-headers)
 
 (defvar os-github-auth nil

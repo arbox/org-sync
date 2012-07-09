@@ -146,7 +146,7 @@
 (defun os-action-fun (action)
   "Return current backend ACTION function or nil."
   (unless (or (null action) (null os-backend))
-    (let ((fsym (intern (format "os-%s-%s" os-backend action))))
+    (let ((fsym (assoc-default action (eval os-backend))))
       (when (fboundp fsym)
         fsym))))
 
@@ -181,8 +181,8 @@
   "List of shared buglist properties.")
 
 (defvar os-backend-alist
-  '(("github.com/\\(?:repos/\\)?[^/]+/[^/]+" . github)
-    ("bitbucket.org/[^/]+/[^/]+" . bb))
+  '(("github.com/\\(?:repos/\\)?[^/]+/[^/]+" . os-github-backend)
+    ("bitbucket.org/[^/]+/[^/]+"             . os-bb-backend))
   "Alist of url patterns vs corresponding org-sync backend.")
 
 (defun os-get-backend (url)
@@ -241,17 +241,28 @@ Return ELEM if it was added, nil otherwise."
       (setcdr p (cons elem nil))
       elem)))
 
-(os-defun-overridable os--send-buglist (buglist)
+(defun os--send-buglist (buglist)
   "Send a BUGLIST on the bugtracker and return an updated buglist."
-  (error "No send backend selected."))
+  (let ((f (os-action-fun 'send-buglist)))
+        (if f
+            (funcall f buglist)
+          (error "No send backend available."))))
 
-(os-defun-overridable os--fetch-buglist (last-update)
+(defun os--fetch-buglist (last-update)
   "Return the buglist at url REPO."
-  (error "No fetch backend selected."))
+  (let ((f (os-action-fun 'fetch-buglist)))
+        (if f
+            (funcall f last-update)
+          (error "No fetch backend available."))))
 
-(os-defun-overridable os--base-url (url)
+
+(defun os--base-url (url)
   "Return the base url of URL."
-  url)
+  (let ((f (os-action-fun 'base-url)))
+        (if f
+            (funcall f url)
+          (error "No base-url backend available."))))
+
 
 (defun os-buglist-to-element (bl)
   "Return buglist BL as an element."

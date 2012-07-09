@@ -131,11 +131,9 @@
 ;; string is then inserted in the buffer. See `os-buglist-to-element'
 ;; and `os-bug-to-element'.
 
+(eval-when-compile (require 'cl))
 (require 'org)
 (require 'org-element)
-(eval-when-compile (require 'cl))
-(require 'json)
-(require 'url)
 
 (defvar os-backend
   nil

@@ -1,8 +1,8 @@
 * Documentation
 
 ** DONE user documentation
-** TODO update how to write backends
-** TODO update introduction to code
+** DONE update how to write backends
+** DONE update introduction to code
 
 * Org-sync
 

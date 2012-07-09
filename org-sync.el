@@ -38,7 +38,8 @@
 ;; A buglist is a top-level headline which has a :url: in its
 ;; PROPERTIES block. This headline is composed of a list of
 ;; subheadlines which corresponds to bugs. The requirement for a bug
-;; is to have a state, a title and an id.
+;; is to have a state, a title and an id. If you add a new bug, it
+;; wont have an id but it will get one once you sync.
 
 ;; The state is an org TODO state. It can be either OPEN or CLOSED.
 ;; The title is just the title of the headline.
@@ -52,7 +53,8 @@
 ;; Additionnal data used by the backend are in the PROPERTIES block of
 ;; the bug.
 
-;; To add a bug, just insert a new headline under the buglist you want to modify e.g.
+;; To add a bug, just insert a new headline under the buglist you want
+;; to modify e.g.:
 ;;     ** OPEN my new bug
 ;; Then simply call `os-sync'.
 
@@ -92,23 +94,26 @@
 ;; Some accesors are available for both structure. See `os-set-prop',
 ;; and `os-get-prop'.
 
+
 ;; When importing an URL, Org-sync matches the URL against the
-;; variable `os-backends-alists' which maps regexps to backend
+;; variable `os-backend-alist' which maps regexps to backend
 ;; symbols.  The backend symbol is then used to call the backend
 ;; functions.  When these functions are called, the variable
 ;; `os-backend' and `os-base-url' are dynamically bound to
 ;; respectively the backend symbol and the cannonical URL for the
 ;; thing you are synching with.
 
-;; Each backend has to provide at least 3 functions:
+;; The symbol part in a `os-backend-alist' pair must be a variable
+;; defined in the backend. It is an alist that maps verb to function
+;; symbol. Each backend must implement at least 3 verbs:
 
-;; * os-<your backend>-base-url (URL)
+;; * base-url (param: URL)
 
 ;; Given the user URL, returns the cannonical URL
 ;; to represent it. This URL will be available dynamically to all of
 ;; your backend function through the `os-base-url' variable.
 
-;; * os-<your backend>-fetch-buglist (LAST-FETCH-TIME)
+;; * fetch-buglist (param: LAST-FETCH-TIME)
 
 ;; Fetch the buglist at `os-base-url'. If LAST-FETCH-TIME is non-nil,
 ;; and you only fetched things modified since it, you are expected to
@@ -116,10 +121,11 @@
 ;; add whatever properties you want in a bug. The lisp printer is used
 ;; to persist them in the buffer.
 
-;; * os-<your backend>-send-buglist (BUGLIST)
+;; * send-buglist (param: BUGLIST)
 
 ;; Send BUGLIST to `os-base-url' and return the final, updated buglist
 ;; available on the remote end.
+
 
 ;; When synchronizing, Org-sync parses the current buffer using
 ;; org-element and convert any found buglist headline to a buglist

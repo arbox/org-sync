@@ -1,8 +1,8 @@
 * Documentation
 
 ** DONE user documentation
-** DONE how to write backends
-** DONE introduction to code
+** TODO update how to write backends
+** TODO update introduction to code
 
 * Org-sync
 
@@ -24,8 +24,11 @@ Idea:
 - add a variable os-element along with os-base-url that corresponds to
   a bug represention in org-element.
 
-** TODO replace overridable macro by something simpler
-
+** DONE replace overridable macro by something simpler
+The right value of a pair in os-backend-alist is now the symbol of a
+variable defined in each backend. This variable is an alist that maps
+verb symbol (base-url, fetch-buglist, send-buglist for now) to
+function symbol.
 * Backends
 Write backends for some free software.
 

@@ -159,36 +159,6 @@
       (when (fboundp fsym)
         fsym))))
 
-(defmacro os-defun-overridable (sym args &rest body)
-  "Define an overridable action function SYM taking ARGS."
-  (declare (indent defun))
-  (let ((name) (action))
-    (unless (symbolp sym)
-      (error "name must be a symbol."))
-
-    (unless (listp args)
-      (error "args must be a list."))
-
-    (setq name (symbol-name sym))
-
-    (unless (string-match "^.+?--\\(.+\\)$" name)
-      (error "fun name must have --."))
-
-    (setq action (intern (match-string 1 name)))
-    (let ((fun (gensym)))
-      `(defun ,sym ,args
-         ;; if current backend overrides the action, call it
-         (let ((,fun (os-action-fun ',action)))
-           (if ,fun
-               (funcall ,fun ,@args)
-
-             ;; else, call the generic action
-             ,@body))))))
-
-(defconst os-buglist-properties
-  '(title url)
-  "List of shared buglist properties.")
-
 (defun os-get-backend (url)
   "Return backend symbol matching URL from os-backend-alist or nil."
   (assoc-default url os-backend-alist 'string-match))

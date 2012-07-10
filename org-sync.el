@@ -141,13 +141,16 @@
 (require 'org)
 (require 'org-element)
 
-(defvar os-backend
-  nil
+(defvar os-backend nil
   "Org-sync current backend.")
 
-(defvar os-base-url
-  nil
+(defvar os-base-url nil
   "Org-sync current base url.")
+
+(defvar os-backend-alist
+  '(("github.com/\\(?:repos/\\)?[^/]+/[^/]+" . os-github-backend)
+    ("bitbucket.org/[^/]+/[^/]+"             . os-bb-backend))
+  "Alist of url patterns vs corresponding org-sync backend.")
 
 (defun os-action-fun (action)
   "Return current backend ACTION function or nil."
@@ -185,11 +188,6 @@
 (defconst os-buglist-properties
   '(title url)
   "List of shared buglist properties.")
-
-(defvar os-backend-alist
-  '(("github.com/\\(?:repos/\\)?[^/]+/[^/]+" . os-github-backend)
-    ("bitbucket.org/[^/]+/[^/]+"             . os-bb-backend))
-  "Alist of url patterns vs corresponding org-sync backend.")
 
 (defun os-get-backend (url)
   "Return backend symbol matching URL from os-backend-alist or nil."

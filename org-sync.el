@@ -451,7 +451,7 @@ If KEY is already equal to VAL, no change is made."
     (org-save-outline-visibility 'use-markers (org-mode-restart))))
 
 (defun os-import (url)
-  "Fetch and insert bugs from URL."
+  "Fetch and insert at point bugs from URL."
   (interactive "sURL: ")
   (os-with-backend url
    (let* ((buglist (os--fetch-buglist nil))

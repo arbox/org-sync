@@ -152,6 +152,13 @@
     ("bitbucket.org/[^/]+/[^/]+"             . os-bb-backend))
   "Alist of url patterns vs corresponding org-sync backend.")
 
+(defvar os-cache-file (concat user-emacs-directory "org-sync-cache")
+  "Path to Org-sync cache file.")
+
+(defvar os-cache-alist nil
+  "Org-sync cache for buglists.
+Maps URLs to buglist cache.")
+
 (defun os-action-fun (action)
   "Return current backend ACTION function or nil."
   (unless (or (null action) (null os-backend))
@@ -188,6 +195,24 @@ assigned to os-backend."
        (let* ((os-backend ,res)
               (os-base-url (os--base-url ,url)))
          ,@body))))
+
+(defun os-set-cache (url buglist)
+  "Update URL to BUGLIST in `os-cache-alist'."
+  (let ((cell (assoc url os-cache-alist)))
+    (if cell
+        (setcdr cell buglist)
+      (push (cons url buglist) os-cache-alist))))
+
+(defun os-get-cache (url)
+  "Return the buglist at URL in cache or nil."
+    (cdr (assoc url os-cache-alist)))
+
+(defun os-write-cache ()
+  (with-temp-file os-cache-file
+    (prin1 `(setq os-cache-alist ',os-cache-alist) (current-buffer))))
+
+(defun os-load-cache ()
+  (load os-cache-file 'noerror nil))
 
 (defun os-propertize (sym)
   "Return sym as a property i.e. prefixed with :."

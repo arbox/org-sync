@@ -457,6 +457,11 @@ If KEY is already equal to VAL, no change is made."
    (let* ((buglist (os--fetch-buglist nil))
           (elem (os-buglist-to-element buglist))
           (bug-keyword '(sequence "OPEN" "|" "CLOSED")))
+
+     ;; we add the buglist to the cache
+     (os-set-prop :date-cache (current-time) buglist)
+     (os-set-cache os-base-url buglist)
+
      (save-excursion
        (insert (org-element-interpret-data
                 `(org-data nil ,elem)))
@@ -677,6 +682,63 @@ The form of the alist is ((:property . (valueA valueB)...)"
           (goto-char oldpoint))
 
         (message "Synchronization complete.")))
+
+
+;; new cached merging system, not finished
+(defun os-buglist-diff (a b)
+  "Return a diff buglist which turns buglist A to B when applied.
+This function makes the assumption that A ⊂ B."
+  (let ((abugs (os-get-prop :bugs a))
+        (diff))
+
+    (dolist (bbug (os-get-prop :bugs b))
+      (let ((abug (os-get-bug-id abugs (os-get-prop :id bbug))))
+        (when (or (not abug) (not (os-bug-diff abug bbug)))
+          (push bbug diff))))
+    `(:bugs ,diff)))
+
+(defun os-merge-diff (local remote)
+  "Return the merge of LOCAL diff and REMOTE diff.
+The merge is the union of the diff. Conflicting bugs are tagged
+with :sync conflict-local or conflict-remote."
+  ;; TODO)
+
+(defun os-update-buglist (base diff)
+  "Apply buglist DIFF to buglist BASE and return the result."
+  (let (new)
+    (dolist (bug (os-get-prop :bugs base)
+      (let ((diff-bug
+             (os-get-bug-id diff (os-get-prop :id bug))))
+
+        (push (if diff-bug diff-bug bug) new))))
+    `(:bugs ,new)))
+
+
+;; TODO
+(defun os-new-merge ()
+  (let* ((cache (os-get-cache os-base-url))
+         (last-fetch (os-get-prop :date-cache cache))
+         (local-diff (os-buglist-diff cache local))
+         remote remote-diff merged merged-diff)
+
+    ;; fetch remote buglist
+    (if last-fetch
+        ;; make a partial fetch and apply it to cache if the backend
+        ;; supports it
+        (let* ((partial-fetch (os--fetch-buglist last-fetch)))
+          (if (os-get-prop :since partial-fetch)
+              (setq remote (os-update-buglist cache partial-fetch))
+            (setq remote partial-fetch)))
+      (setq remote (os--fetch-buglist nil)))
+    ;; at this point remote is the full remote buglist
+
+    (setq remote-diff (os-buglist-diff cache remote))
+    (setq merged-diff (os-merge-diff local-diff remote-diff))
+    (setq merged (os-update-buglist remote merged-diff))
+
+    (unless (os-buglist-dups merged-diff)
+      (os--send-buglist merged-diff)
+      (os-set-cache os-base-url merged))))
 
 (provide 'org-sync)
 ;;; org-sync.el ends here

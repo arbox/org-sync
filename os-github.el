@@ -96,7 +96,7 @@ Append new tags in EXISTING-TAGS by side effects."
     `(:title ,title
              :url ,os-base-url
              :bugs ,(mapcar 'os-github-json-to-bug json)
-             :since last-update)))
+             :since ,last-update)))
 
 ;; override
 (defun os-github-base-url (url)

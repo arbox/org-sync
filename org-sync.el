@@ -180,7 +180,7 @@ os-base-url.
 
 Else BACKEND should be a backend symbol. It is
 assigned to os-backend."
-  (declare (indent 1))
+  (declare (indent 1) (debug t))
   (let ((res (gensym))
         (url (gensym)))
 
@@ -632,68 +632,13 @@ The form of the alist is ((:property . (valueA valueB)...)"
   "Return t if bug A PROP = bug B PROP, nil otherwise."
   (equal (os-get-prop prop a) (os-get-prop prop b)))
 
-(defun os-sync (debug)
-  "Update buglists in current buffer."
-  (interactive "P")
-  (let* ((local-doc (org-element-parse-buffer))
-         (local-headlines (os-find-buglists local-doc)))
-
-    (dolist (headline local-headlines)
-      (let* ((local (os-headline-to-buglist headline))
-             (url (os-get-prop :url local))
-             (last-update))
-
-        (when (os-buglist-dups local)
-          (error "Buglist \"%s\" contains unmerged bugs." (os-get-prop :title local)))
-
-        (os-with-backend url
-          (let* ((remote (os--fetch-buglist last-update))
-                 (merged (os-merge-buglist local remote))
-                 (updated)
-                 (new-headline))
-
-            (if debug
-                (progn
-                  (with-current-buffer (get-buffer-create "*Sending*")
-                    (emacs-lisp-mode)
-                    (insert (pp merged))
-                    (switch-to-buffer (current-buffer))
-                    (if (yes-or-no-p "ok?")
-                        (progn
-                          (setq updated (os--send-buglist merged))
-                          (setq new-headline (os-buglist-to-element updated)))
-                      (error "sync canceled."))))
-              (progn
-                (setq updated (os--send-buglist merged))
-                (setq new-headline (os-buglist-to-element updated))))
-
-            ;; replace headlines in local-doc
-            (setf (car headline) (car new-headline)
-                  (cdr headline) (cdr new-headline))))))
-
-        (os-add-keyword local-doc "TODO" "OPEN | CLOSED")
-
-        ;; since we replace the whole buffer, save-excusion doesn't work so
-        ;; we manually (re)store the point
-        (let ((oldpoint (point)))
-          (delete-region (point-min) (point-max))
-          (goto-char (point-min))
-          (insert (org-element-interpret-data local-doc))
-          (goto-char oldpoint))
-
-        (message "Synchronization complete.")))
-
-
-;; new cached merging system, not finished
 (defun os-buglist-diff (a b)
   "Return a diff buglist which turns buglist A to B when applied.
 This function makes the assumption that A ⊂ B."
-  (let ((abugs (os-get-prop :bugs a))
-        (diff))
-
+  (let (diff)
     (dolist (bbug (os-get-prop :bugs b))
-      (let ((abug (os-get-bug-id abugs (os-get-prop :id bbug))))
-        (when (or (not abug) (not (os-bug-diff abug bbug)))
+      (let ((abug (os-get-bug-id a (os-get-prop :id bbug))))
+        (when (or (null abug) (os-bug-diff abug bbug))
           (push bbug diff))))
     `(:bugs ,diff)))
 
@@ -701,44 +646,112 @@ This function makes the assumption that A ⊂ B."
   "Return the merge of LOCAL diff and REMOTE diff.
 The merge is the union of the diff. Conflicting bugs are tagged
 with :sync conflict-local or conflict-remote."
-  ;; TODO)
+  (let ((added (make-hash-table))
+        merge)
+    ;; add all local bugs
+    (dolist (lbug (os-get-prop :bugs local))
+      (let* ((id (os-get-prop :id lbug))
+             (rbug (os-get-bug-id remote id))
+            rnew lnew)
+        ;; add both remote and local with special tags when there's a
+        ;; conflict
+        (if rbug ;; TODO: maybe test diff between rbug lbug
+            (progn
+              (setq lnew (copy-tree lbug))
+              (os-set-prop :sync 'conflict-local lnew)
+              (setq rnew (copy-tree rbug))
+              (os-set-prop :sync 'conflict-remote rnew)
+              (push rnew merge)
+              (push lnew merge))
+          (push lbug merge))
+        (puthash id t added)))
+
+    (dolist (rbug (os-get-prop :bugs remote))
+      (unless (gethash (os-get-prop :id rbug) added)
+        (push rbug merge)))
+
+    `(:bugs ,merge)))
 
 (defun os-update-buglist (base diff)
   "Apply buglist DIFF to buglist BASE and return the result."
-  (let (new)
-    (dolist (bug (os-get-prop :bugs base)
-      (let ((diff-bug
-             (os-get-bug-id diff (os-get-prop :id bug))))
+  (let ((added (make-hash-table))
+        new)
+    (dolist (bug (os-get-prop :bugs base))
+      (let* ((id (os-get-prop :id bug))
+             (diff-bug (os-get-bug-id diff id))
+             (new-bug (or diff-bug bug)))
+        (push new-bug new)
+        (puthash id t added)))
 
-        (push (if diff-bug diff-bug bug) new))))
-    `(:bugs ,new)))
+    (dolist (bug (os-get-prop :bugs diff))
+      (unless (gethash (os-get-prop :id bug) added)
+        (push bug new)))
+    (let ((new-buglist (copy-list base)))
+      (os-set-prop :bugs new new-buglist)
+      new-buglist)))
 
 
-;; TODO
-(defun os-new-merge ()
-  (let* ((cache (os-get-cache os-base-url))
-         (last-fetch (os-get-prop :date-cache cache))
-         (local-diff (os-buglist-diff cache local))
-         remote remote-diff merged merged-diff)
+;; TODO: add sync tags to make backends work again.
+(defun os-sync ()
+  "Update buglists in current buffer."
+  (interactive)
+  (let* ((local-doc (org-element-parse-buffer))
+         (local-headlines (os-find-buglists local-doc)))
 
-    ;; fetch remote buglist
-    (if last-fetch
-        ;; make a partial fetch and apply it to cache if the backend
-        ;; supports it
-        (let* ((partial-fetch (os--fetch-buglist last-fetch)))
-          (if (os-get-prop :since partial-fetch)
-              (setq remote (os-update-buglist cache partial-fetch))
-            (setq remote partial-fetch)))
-      (setq remote (os--fetch-buglist nil)))
-    ;; at this point remote is the full remote buglist
+    (dolist (headline local-headlines)
+      (let* ((local (os-headline-to-buglist headline))
+             (url (os-get-prop :url local)))
 
-    (setq remote-diff (os-buglist-diff cache remote))
-    (setq merged-diff (os-merge-diff local-diff remote-diff))
-    (setq merged (os-update-buglist remote merged-diff))
+        (when (os-buglist-dups local)
+          (error
+           "Buglist \"%s\" contains unmerged bugs."
+           (os-get-prop :title local)))
 
-    (unless (os-buglist-dups merged-diff)
-      (os--send-buglist merged-diff)
-      (os-set-cache os-base-url merged))))
+        (os-with-backend url
+          (let* ((cache (os-get-cache os-base-url))
+                 (last-fetch (os-get-prop :date-cache cache))
+                 (local-diff (os-buglist-diff cache local))
+                 remote remote-diff merged merged-diff)
+
+            ;; fetch remote buglist
+            (if last-fetch
+                ;; make a partial fetch and apply it to cache if the backend
+                ;; supports it
+                (let* ((partial-fetch (os--fetch-buglist last-fetch)))
+                  (DBG partial-fetch)
+                  (if (os-get-prop :since partial-fetch)
+                      (setq remote (os-update-buglist cache partial-fetch))
+                    (setq remote partial-fetch)))
+              (setq remote (os--fetch-buglist nil)))
+            ;; at this point remote is the full remote buglist
+
+            (setq remote-diff (os-buglist-diff cache remote))
+            (setq merged-diff (os-merge-diff local-diff remote-diff))
+            (setq merged (os-update-buglist remote merged-diff))
+
+            (pp merged-diff)
+
+            (unless (os-buglist-dups merged-diff)
+              (os--send-buglist merged-diff)
+              (os-set-prop :date-cache (current-time) merged)
+              (os-set-cache os-base-url merged))
+
+            ;; replace headlines in local-doc
+            (let ((new-headline (os-buglist-to-element merged)))
+              (setf (car headline) (car new-headline)
+                    (cdr headline) (cdr new-headline)))))))
+
+    (os-add-keyword local-doc "TODO" "OPEN | CLOSED")
+
+    ;; since we replace the whole buffer, save-excusion doesn't work so
+    ;; we manually (re)store the point
+    (let ((oldpoint (point)))
+      (delete-region (point-min) (point-max))
+      (goto-char (point-min))
+      (insert (org-element-interpret-data local-doc))
+      (goto-char oldpoint))
+
+    (message "Synchronization complete.")))
 
 (provide 'org-sync)
 ;;; org-sync.el ends here

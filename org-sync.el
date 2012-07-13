@@ -721,7 +721,6 @@ with :sync conflict-local or conflict-remote."
                 ;; make a partial fetch and apply it to cache if the backend
                 ;; supports it
                 (let* ((partial-fetch (os--fetch-buglist last-fetch)))
-                  (DBG partial-fetch)
                   (if (os-get-prop :since partial-fetch)
                       (setq remote (os-update-buglist cache partial-fetch))
                     (setq remote partial-fetch)))

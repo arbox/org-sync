@@ -481,8 +481,9 @@ If KEY is already equal to VAL, no change is made."
   (when id
       (catch :exit
         (mapc (lambda (x)
-                (when (= (os-get-prop :id x) id)
-                  (throw :exit x)))
+                (let ((current-id (os-get-prop :id x)))
+                  (when (and (numberp current-id) (= current-id id))
+                    (throw :exit x))))
               (os-get-prop :bugs buglist))
         nil)))
 
@@ -684,8 +685,10 @@ with :sync conflict-local or conflict-remote."
         (puthash id t added)))
 
     (dolist (bug (os-get-prop :bugs diff))
-      (unless (gethash (os-get-prop :id bug) added)
-        (push bug new)))
+      (let ((id (os-get-prop :id bug)))
+        (when (or (null id) (null (gethash id added)))
+          (push bug new))))
+
     (let ((new-buglist (copy-list base)))
       (os-set-prop :bugs new new-buglist)
       new-buglist)))

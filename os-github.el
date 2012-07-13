@@ -120,16 +120,12 @@ Append new tags in EXISTING-TAGS by side effects."
                            (result
                             (cond
                              ;; new bug
-                             ((eq sync 'new)
+                             ((null id)
                               (os-github-handle-tags b existing-tags)
                               (os-github-request "POST" new-url data))
 
-                             ;; delete bug
-                             ((eq sync 'delete)
-                              (os-github-request "DELETE" modif-url))
-
                              ;; update bug
-                             ((eq sync 'change)
+                             (t
                               (os-github-handle-tags b existing-tags)
                               (os-github-request "PATCH" modif-url data))))
                            (err (cdr (assoc 'message result))))

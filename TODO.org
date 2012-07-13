@@ -19,7 +19,7 @@ Some ideas:
 - a single variable maps repo urls to user accounts.
 - each backend use its own variable, more flexible.
 
-** TODO cache parse/fetch result
+** DONE cache parse/fetch result
 Idea:
 - add a variable os-element along with os-base-url that corresponds to
   a bug represention in org-element.

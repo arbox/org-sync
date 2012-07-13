@@ -222,22 +222,21 @@ decoded response in JSON."
   (let* ((new-url (concat os-base-url "/issues"))
          (new-bugs
           (mapcar (lambda (b)
-                    (let* ((sync (os-get-prop :sync b))
-                           (id (os-get-prop :id b))
+                    (let* ((id (os-get-prop :id b))
                            (data (os-bb-post-encode (os-bb-bug-to-form b)))
                            (modif-url (format "%s/%d/" new-url (or id 0)))
                            (result
                             (cond
                              ;; new bug
-                             ((eq sync 'new)
+                             ((null id)
                               (os-bb-request "POST" new-url data))
 
                              ;; delete bug
-                             ((eq sync 'delete)
+                             ((eq (os-get-prop :status b) 'delete)
                               (os-bb-request "DELETE" modif-url))
 
                              ;; update bug
-                             ((eq sync 'change)
+                             (t
                               (os-bb-request "PUT" modif-url data)))))
 
                       (cond

@@ -11,7 +11,7 @@
 Also, find out how to handle charsets, line-ending, etc.
 
 ** DONE use usual deadline timestamp from org-mode
-No backend uses it but it importing/exporting from org-element works.
+No backend uses it but importing from/exporting to org-element works.
 
 ** TODO fix date representation
 ** TODO better auth system
@@ -20,15 +20,16 @@ Some ideas:
 - each backend use its own variable, more flexible.
 
 ** DONE cache parse/fetch result
-Idea:
-- add a variable os-element along with os-base-url that corresponds to
-  a bug represention in org-element.
+os-cache-alist maps urls to buglists and each buglists has a
+=:date-cache= property.
 
 ** DONE replace overridable macro by something simpler
 The right value of a pair in os-backend-alist is now the symbol of a
 variable defined in each backend. This variable is an alist that maps
 verb symbol (base-url, fetch-buglist, send-buglist for now) to
 function symbol.
+
+** TODO add DELETE as a possible task status.
 * Backends
 Write backends for some free software.
 
@@ -48,3 +49,4 @@ Write backends for some free software.
 *** TODO component
 *** TODO version
 *** TODO milestone
+*** TODO test DELETE

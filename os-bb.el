@@ -46,7 +46,7 @@
 
 (defun os-bb-request (method url &optional data)
   "Send HTTP request at URL using METHOD with DATA.
-AUTH is a cons (\"user\" . \"pwd\"). Return the server
+AUTH is a cons (\"user\" . \"pwd\").  Return the server
 decoded response in JSON."
   (let* ((url-request-method method)
          (url-request-data data)
@@ -92,14 +92,14 @@ decoded response in JSON."
 ;;     version: The version associated with the issue.
 ;;     responsible: The username of the person responsible for the issue.
 
-;;     priority: The priority of the issue. Valid priorities are:
+;;     priority: The priority of the issue.  Valid priorities are:
 ;;     - trivial
 ;;     - minor
 ;;     - major
 ;;     - critical
 ;;     - blocker
 
-;;     status: The status of the issue. Valid statuses are:
+;;     status: The status of the issue.  Valid statuses are:
 ;;     - new
 ;;     - open
 ;;     - resolved
@@ -108,7 +108,7 @@ decoded response in JSON."
 ;;     - duplicate
 ;;     - wontfix
 
-;;     kind: The kind of issue. Valid kinds are:
+;;     kind: The kind of issue.  Valid kinds are:
 ;;     - bug
 ;;     - enhancement
 ;;     - proposal

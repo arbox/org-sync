@@ -53,7 +53,7 @@
             json)))
 
 (defun os-github-random-color ()
-  "Return a random hex color code 6 characters string without the #."
+  "Return a random hex color code 6 characters string without #."
   (random t)
   (format "%02X%02X%02X" (random 256) (random 256) (random 256)))
 
@@ -64,8 +64,8 @@
 (defun os-github-create-label (label &optional color)
   "Create new COLOR LABEL at os-base-url and return it.
 
-LABEL must be a string. COLOR must be a 6 characters string
-containing a hex color code without the #. Take a random color
+LABEL must be a string.  COLOR must be a 6 characters string
+containing a hex color code without the #.  Take a random color
 when not given."
   (let* ((url (concat os-base-url "/labels"))
          (json (json-encode `((name . ,label)
@@ -192,8 +192,8 @@ Append new tags in EXISTING-TAGS by side effects."
 
 (defun os-github-request (method url &optional data)
   "Send HTTP request at URL using METHOD with DATA.
-AUTH is a cons (\"user\" . \"pwd\"). Return the server
-decoded JSON response."
+AUTH is a cons (\"user\" . \"pwd\").  Return the server decoded
+JSON response."
   (let* ((url-request-method method)
          (url-request-data data)
          (auth os-github-auth)

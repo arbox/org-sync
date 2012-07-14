@@ -24,11 +24,11 @@
 ;;; Commentary:
 
 ;; This package implements an extension to org-mode that synchnonizes
-;; org document with external services. It provides an interface that
-;; can be implemented in backends. The current focus is on bugtrackers
-;; services.
+;; org document with external services.  It provides an interface that
+;; can be implemented in backends.  The current focus is on
+;; bugtrackers services.
 
-;; The entry points are `os-import' and `os-sync'. The former prompts
+;; The entry points are `os-import' and `os-sync'.  The former prompts
 ;; for a URL to import, the latter pulls, merges and pushes every
 ;; buglists in the current buffer.
 
@@ -36,14 +36,14 @@
 ;; `os-import', modify it or add a bug and run `os-sync'.
 
 ;; A buglist is a top-level headline which has a :url: in its
-;; PROPERTIES block. This headline is composed of a list of
-;; subheadlines which corresponds to bugs. The requirement for a bug
-;; is to have a state, a title and an id. If you add a new bug, it
+;; PROPERTIES block.  This headline is composed of a list of
+;; subheadlines which corresponds to bugs.  The requirement for a bug
+;; is to have a state, a title and an id.  If you add a new bug, it
 ;; wont have an id but it will get one once you sync.
 
-;; The state is an org TODO state. It can be either OPEN or CLOSED.
-;; The title is just the title of the headline.
-;; The id is a number in the PROPERTIES block of the headline.
+;; The state is an org TODO state.  It can be either OPEN or CLOSED.
+;; The title is just the title of the headline.  The id is a number in
+;; the PROPERTIES block of the headline.
 
 ;; Org DEADLINE timestamp are also handled and can be inserted in a
 ;; bug headline which can then be used by the backend if it supports
@@ -60,8 +60,8 @@
 
 ;;; Code:
 
-;; The data structures used to represent bugs and buglists are simple plists.
-;; It is what backend have to handle, process or return.
+;; The data structures used to represent bugs and buglists are simple
+;; plists.  It is what backend have to handle, process or return.
 
 ;; Buglist example:
 
@@ -91,35 +91,34 @@
 ;;   ;; ...
 ;;   )
 
-;; Some accesors are available for both structure. See `os-set-prop',
+;; Some accesors are available for both structure.  See `os-set-prop',
 ;; and `os-get-prop'.
 
 
 ;; When importing an URL, Org-sync matches the URL against the
-;; variable `os-backend-alist' which maps regexps to backend
-;; symbols.  The backend symbol is then used to call the backend
-;; functions.  When these functions are called, the variable
-;; `os-backend' and `os-base-url' are dynamically bound to
-;; respectively the backend symbol and the cannonical URL for the
-;; thing you are synching with.
+;; variable `os-backend-alist' which maps regexps to backend symbols.
+;; The backend symbol is then used to call the backend functions.
+;; When these functions are called, the variable `os-backend' and
+;; `os-base-url' are dynamically bound to respectively the backend
+;; symbol and the cannonical URL for the thing you are synching with.
 
 ;; The symbol part in a `os-backend-alist' pair must be a variable
-;; defined in the backend. It is an alist that maps verb to function
-;; symbol. Each backend must implement at least 3 verbs:
+;; defined in the backend.  It is an alist that maps verb to function
+;; symbol.  Each backend must implement at least 3 verbs:
 
 ;; * base-url (param: URL)
 
-;; Given the user URL, returns the cannonical URL
-;; to represent it. This URL will be available dynamically to all of
-;; your backend function through the `os-base-url' variable.
+;; Given the user URL, returns the cannonical URL to represent it.
+;; This URL will be available dynamically to all of your backend
+;; function through the `os-base-url' variable.
 
 ;; * fetch-buglist (param: LAST-FETCH-TIME)
 
-;; Fetch the buglist at `os-base-url'. If LAST-FETCH-TIME is non-nil,
+;; Fetch the buglist at `os-base-url'.  If LAST-FETCH-TIME is non-nil,
 ;; and you only fetched things modified since it, you are expected to
-;; set the property :since to it in the buglist you return. You can
-;; add whatever properties you want in a bug. The lisp printer is used
-;; to persist them in the buffer.
+;; set the property :since to it in the buglist you return.  You can
+;; add whatever properties you want in a bug.  The lisp printer is
+;; used to persist them in the buffer.
 
 ;; * send-buglist (param: BUGLIST)
 
@@ -129,12 +128,13 @@
 
 ;; When synchronizing, Org-sync parses the current buffer using
 ;; org-element and convert any found buglist headline to a buglist
-;; data structure. See `os-headline-to-buglist', `os-headline-to-bug'.
+;; data structure.  See `os-headline-to-buglist',
+;; `os-headline-to-bug'.
 
 ;; When writing buglists back to the document, Org-sync converts them
 ;; to elements -- the data structure used by org-element -- which are
-;; then interpreted by `org-element-interpret-data'. The resulting
-;; string is then inserted in the buffer. See `os-buglist-to-element'
+;; then interpreted by `org-element-interpret-data'.  The resulting
+;; string is then inserted in the buffer.  See `os-buglist-to-element'
 ;; and `os-bug-to-element'.
 
 (eval-when-compile (require 'cl))
@@ -167,18 +167,18 @@ Maps URLs to buglist cache.")
         fsym))))
 
 (defun os-get-backend (url)
-  "Return backend symbol matching URL from os-backend-alist or nil."
+  "Return backend symbol matching URL from `os-backend-alist'."
   (assoc-default url os-backend-alist 'string-match))
 
 (defmacro os-with-backend (backend &rest body)
   "Eval BODY with os-backend set to corresponding BACKEND.
 
 If BACKEND evals to a string it is passed to os-get-backend, the
-resulting symbol is dynamically assigned to os-backend. The url
+resulting symbol is dynamically assigned to os-backend.  The url
 is passed to os--base-url and dynamically assigned to
 os-base-url.
 
-Else BACKEND should be a backend symbol. It is
+Else BACKEND should be a backend symbol.  It is
 assigned to os-backend."
   (declare (indent 1) (debug t))
   (let ((res (gensym))
@@ -227,8 +227,7 @@ assigned to os-backend."
   (plist-put b key val))
 
 (defun os-append! (elem list)
-  "Add ELEM at the end of LIST by side effect if it is not
-already present.
+  "Add ELEM at the end of LIST by side effect if it isn't present.
 
 Return ELEM if it was added, nil otherwise."
   (catch :exit
@@ -241,7 +240,7 @@ Return ELEM if it was added, nil otherwise."
       elem)))
 
 (defun os--send-buglist (buglist)
-  "Send a BUGLIST on the bugtracker and return an updated buglist."
+  "Send a BUGLIST on the bugtracker."
   (let ((f (os-action-fun 'send-buglist)))
         (if f
             (funcall f buglist)
@@ -283,7 +282,7 @@ Return ELEM if it was added, nil otherwise."
     final))
 
 (defun os-bug-to-element (b)
-  "Return bug B as a TODO element if it is visible, nil otherwise."
+  "Return bug B as a TODO element if it is visible or nil."
   ;; not in PROPERTIES block
   (let* ((skip '(:title :status :desc :old-bug :date-deadline))
          (title (os-get-prop :title b))
@@ -373,7 +372,7 @@ Return ELEM if it was added, nil otherwise."
          bug)
 
     ;; deadlines can be either on the same line as the headline or
-    ;; on the next one. org-element doesn't parse it the same way
+    ;; on the next one.  org-element doesn't parse it the same way
     ;; when on the same line, remove DEADLINE tag from title
     ;; else ignore DEADLINE tag in paragraph
     (when deadline
@@ -559,7 +558,7 @@ The value returned is a list of duplicated ids."
           (setq merged-bugs (append merged-bugs (list loc))))
 
          ;; if local != remote but the modification date is equal, we
-         ;; keep the local and push it. we keep a ref to the remote to
+         ;; keep the local and push it.  we keep a ref to the remote to
          ;; compute a diff when we push
          ((os-bug-prop-equalp :date-modification loc rem)
           (os-set-prop :sync 'change loc)
@@ -645,7 +644,7 @@ This function makes the assumption that A ⊂ B."
 
 (defun os-merge-diff (local remote)
   "Return the merge of LOCAL diff and REMOTE diff.
-The merge is the union of the diff. Conflicting bugs are tagged
+The merge is the union of the diff.  Conflicting bugs are tagged
 with :sync conflict-local or conflict-remote."
   (let ((added (make-hash-table))
         merge)

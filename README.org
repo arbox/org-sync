@@ -8,25 +8,26 @@ documents.
 Make sure you have org-element.el (it's in the contrib directory of
 org-mode) and load org-sync.el, os-bb.el and os-github.el.
 
-Next, open a new org-mode buffer and run =M-x os-import=. It prompts
-you for an URL. You can try my github test repo:
-github.com/ostesting/test. Org-sync should import the issues from the repo.
+Next, open a new org-mode buffer and run =M-x os-import=.  It prompts
+you for an URL.  You can try my github test repo:
+github.com/ostesting/test.  Org-sync should import the issues from the
+repo.
 
-Now, let's try to add a new issue. First you have to set a
+Now, let's try to add a new issue.  First you have to set a
 user/password to be able to modify the issue remotely.
 
 Set the variable os-github-auth to like so:
 =(setq os-github-auth '("ostesting" . "thisisostesting42"))=
 
-Try to add another issue e.g. insert =** OPEN my test issue=. You can
+Try to add another issue e.g. insert =** OPEN my test issue=.  You can
 type a description under it if you want.
 
-The next step is simple, just run =M-x os-sync=. It synchronize all
+The next step is simple, just run =M-x os-sync=.  It synchronize all
 the buglists in the document.
 
 * How to write a new backend
 
-Writing a new backend is easy. This is the basic template:
+Writing a new backend is easy.  This is the basic template:
 
 #+begin_src emacs-lisp
 ;; backend symbol/name: demo
@@ -90,12 +91,12 @@ Writing a new backend is easy. This is the basic template:
            :bugs ((:id 1 :title "Foo" :status open :desc "bar."))))
 #+end_src
 
-That's it. A bug has to have at least an id, title and status
-properties. Other recognized but optionnal properties are
-=:date-deadline=, =:date-creation=, =:date-modification=, =:desc=. Any
-other properties are automatically added in the PROPERTIES block of
-the bug via =prin1-to-string= and are =read= back by org-sync.
-All the dates are regular emacs time object. For more details you can
+That's it.  A bug has to have at least an id, title and status
+properties.  Other recognized but optionnal properties are
+=:date-deadline=, =:date-creation=, =:date-modification=, =:desc=.
+Any other properties are automatically added in the PROPERTIES block
+of the bug via =prin1-to-string= and are =read= back by org-sync.  All
+the dates are regular emacs time object.  For more details you can
 look at the github backend in os-github.el.
 
 * More information

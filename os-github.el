@@ -22,9 +22,14 @@
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
-;;
+
 ;; This package implements a backend for org-sync to synchnonize
-;; issues from a github tracker with an org-mode buffer.
+;; issues from a github tracker with an org-mode buffer.  Read
+;; Org-sync documentation for more information about it.
+
+;; This backend supports basic bug synching along with tag creation.
+;; If you add or change the tags of an issue to something that doesn't
+;; exists, it will be created.
 
 ;;; Code:
 

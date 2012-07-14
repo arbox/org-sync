@@ -22,9 +22,13 @@
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
-;;
+
 ;; This package implements a backend for org-sync to synchnonize
-;; issues from a bitbucket repo with an org-mode buffer.
+;; issues from a bitbucket repo with an org-mode buffer.  Read
+;; Org-sync documentation for more information about it.
+
+;; This backend only supports basic synchronization for now.
+;; Components, versions and milestones are ignored.
 
 ;;; Code:
 

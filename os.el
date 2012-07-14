@@ -1,4 +1,4 @@
-;;; org-sync.el --- Synchronize Org documents with external services
+;;; os.el --- Synchronize Org documents with external services
 
 ;; Copyright (C) 2012  Aurelien Aptel
 ;;
@@ -756,4 +756,4 @@ with :sync conflict-local or conflict-remote."
     (message "Synchronization complete.")))
 
 (provide 'org-sync)
-;;; org-sync.el ends here
+;;; os.el ends here

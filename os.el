@@ -28,9 +28,11 @@
 ;; can be implemented in backends.  The current focus is on
 ;; bugtrackers services.
 
-;; The entry points are `os-import' and `os-sync'.  The former prompts
-;; for a URL to import, the latter pulls, merges and pushes every
-;; buglists in the current buffer.
+;; The entry points are `os-import', `os-sync' and `os'.  The first
+;; one prompts for a URL to import, the second one pulls, merges and
+;; pushes every buglists in the current buffer and the third one
+;; combines the others in one function: if nothing in the buffer can
+;; be synchronized, ask for an URL to import.
 
 ;; The usual workflow is first to import your buglist with
 ;; `os-import', modify it or add a bug and run `os-sync'.
@@ -753,6 +755,17 @@ with :sync conflict-local or conflict-remote."
       (goto-char oldpoint))
 
     (message "Synchronization complete.")))
+
+(defun os ()
+  "Synchronize current buffer or import an external document.
+
+If no Org-sync elements are present in the buffer, ask for a URL
+to import otherwise synchronize the buffer."
+  (interactive)
+  (let* ((local-doc (org-element-parse-buffer)))
+    (if (os-find-buglists local-doc)
+        (os-sync)
+      (call-interactively 'os-import))))
 
 (provide 'org-sync)
 ;;; os.el ends here

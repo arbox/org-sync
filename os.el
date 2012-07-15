@@ -615,8 +615,21 @@ with :sync conflict-local or conflict-remote."
       (os-set-prop :bugs new new-buglist)
       new-buglist)))
 
+(defun os-remove-unidentified-bug (buglist)
+  "Remove bugs without id from BUGLIST."
+  (let ((new-bugs))
+    (dolist (b (os-get-prop :bugs buglist))
+      (when (os-get-prop :id b)
+        (push b new-bugs)))
+    (os-set-prop :bugs new-bugs buglist)
+    buglist))
 
-;; TODO: add sync tags to make backends work again.
+(defun os-replace-headline-by-buglist (headline buglist)
+  "Replace HEADLINE by BUGLIST by side effects."
+  (let ((new-headline (os-buglist-to-element buglist)))
+    (setf (car headline) (car new-headline)
+          (cdr headline) (cdr new-headline))))
+
 (defun os-sync ()
   "Update buglists in current buffer."
   (interactive)
@@ -653,19 +666,26 @@ with :sync conflict-local or conflict-remote."
             (setq merged-diff (os-merge-diff local-diff remote-diff))
             (setq merged (os-update-buglist remote merged-diff))
 
-            (pp merged-diff)
+            ;; (pp merged-diff)
+            ;; (pp (let* ((bugs (os-get-prop :bugs merged-diff))
+            ;;            (a (nth 0 bugs))
+            ;;            (b (nth 1 bugs)))
+            ;;       (os-bug-diff a b)))
 
-            (unless (os-buglist-dups merged-diff)
-              (os--send-buglist merged-diff)
+            (if (os-buglist-dups merged-diff)
+                (message "Synchronization failed, manual merge needed.")
+
+              (setq merged
+                    (os-remove-unidentified-bug
+                     (os-update-buglist merged (os--send-buglist merged-diff))))
               (os-set-prop :date-cache (current-time) merged)
-              (os-set-cache os-base-url merged))
+              (os-set-cache os-base-url merged)
+              (message "Synchronization complete."))
 
             ;; replace headlines in local-doc
-            (let ((new-headline (os-buglist-to-element merged)))
-              (setf (car headline) (car new-headline)
-                    (cdr headline) (cdr new-headline)))))))
+            (os-replace-headline-by-buglist headline merged)))))
 
-    (os-add-keyword local-doc "TODO" "OPEN | CLOSED")
+    (os-add-keyword local-doc "TODO" "OPEN | CLOSED DELETE")
 
     ;; since we replace the whole buffer, save-excusion doesn't work so
     ;; we manually (re)store the point
@@ -673,9 +693,7 @@ with :sync conflict-local or conflict-remote."
       (delete-region (point-min) (point-max))
       (goto-char (point-min))
       (insert (org-element-interpret-data local-doc))
-      (goto-char oldpoint))
-
-    (message "Synchronization complete.")))
+      (goto-char oldpoint))))
 
 (defun os ()
   "Synchronize current buffer or import an external document.

@@ -113,46 +113,32 @@ Append new tags in EXISTING-TAGS by side effects."
 
 ;; override
 (defun os-github-send-buglist (buglist)
-  "Send a BUGLIST on the bugtracker and return an updated buglist."
+  "Send a BUGLIST on the bugtracker and return new bugs."
   (let* ((new-url (concat os-base-url "/issues"))
          (existing-tags (os-github-fetch-labels))
-         (new-bugs
-          (mapcar (lambda (b)
-                    (let* ((sync (os-get-prop :sync b))
-                           (id (os-get-prop :id b))
-                           (data (os-github-bug-to-json b))
-                           (modif-url (format "%s/%d" new-url (or id 0)))
-                           (result
-                            (cond
-                             ;; new bug
-                             ((null id)
-                              (os-github-handle-tags b existing-tags)
-                              (os-github-request "POST" new-url data))
+         (newbugs))
+    (dolist (b (os-get-prop :bugs buglist))
+      (let* ((sync (os-get-prop :sync b))
+             (id (os-get-prop :id b))
+             (data (os-github-bug-to-json b))
+             (modif-url (format "%s/%d" new-url (or id 0)))
+             (result
+              (cond
+               ;; new bug
+               ((null id)
+                (os-github-handle-tags b existing-tags)
+                (push (os-github-json-to-bug
+                       (os-github-request "POST" new-url data)) newbugs))
 
-                             ;; update bug
-                             (t
-                              (os-github-handle-tags b existing-tags)
-                              (os-github-request "PATCH" modif-url data))))
-                           (err (cdr (assoc 'message result))))
+               ;; update bug
+               (t
+                (os-github-handle-tags b existing-tags)
+                (os-github-request "PATCH" modif-url data))))
+             (err (cdr (assoc 'message result))))
 
-                      (cond
-                       ;; if bug was :sync same, return it
-                       ((null result)
-                        b)
-
-                       ;; if json result has a message field, error
-                       ((stringp err)
-                        (error "Github: %s" err))
-
-                       ;; else, result is the updated bug
-                       (t
-                        (os-github-json-to-bug result)))))
-                  (os-get-prop :bugs buglist))))
-
-    `(:title ,(os-get-prop :title buglist)
-             :url ,(os-get-prop :url buglist)
-             :bugs ,new-bugs)))
-
+        (when (stringp err)
+          (error "Github: %s" err))))
+    `(:bugs ,newbugs)))
 
 (defun os-github-fetch-json (url)
   "Return a parsed JSON object of all the pages of URL."
@@ -261,11 +247,15 @@ JSON response."
 
 (defun os-github-bug-to-json (bug)
   "Return BUG as JSON."
+  (let ((state (os-get-prop :status bug)))
+    (unless (member state '(open closed))
+      (error "Github: unsupported state \"%s\"" (symbol-name state)))
+
   (json-encode
    `((title . ,(os-get-prop :title bug))
      (body . ,(os-get-prop :desc bug))
      (assignee . ,(os-get-prop :assignee bug))
      (state . ,(symbol-name (os-get-prop :status bug)))
-     (labels . [ ,@(os-get-prop :tags bug) ]))))
+     (labels . [ ,@(os-get-prop :tags bug) ])))))
 
 ;;; os-github.el ends here

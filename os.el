@@ -44,8 +44,10 @@
 ;; wont have an id but it will get one once you sync.
 
 ;; The state is an org TODO state.  It can be either OPEN or CLOSED.
-;; The title is just the title of the headline.  The id is a number in
-;; the PROPERTIES block of the headline.
+;; The special DELETE state can be used to remove a bug at the next
+;; sync.  Not all services support this.  The title is just the title
+;; of the headline.  The id is a number in the PROPERTIES block of the
+;; headline.
 
 ;; Org DEADLINE timestamp are also handled and can be inserted in a
 ;; bug headline which can then be used by the backend if it supports
@@ -74,8 +76,8 @@
 ;; Bug example:
 
 ;; '(:id 3
-;;   :status 'open ;; or 'closed
-;;   :sync 'delete ;; or 'change 'conflict-local 'conflict-remote 'same (= nil)
+;;   :status 'open or 'closed or 'delete
+;;   :sync 'conflict-local or 'conflict-remote
 ;;   :title "foo"
 ;;   :desc "blah"
 ;;   :priority "major"
@@ -124,8 +126,9 @@
 
 ;; * send-buglist (param: BUGLIST)
 
-;; Send BUGLIST to `os-base-url' and return the final, updated buglist
-;; available on the remote end.
+;; Send BUGLIST to the repo at `os-base-url' and return the new bugs
+;; created that way. A bug without an id in BUGLIST is a new bug, the
+;; rest are modified bug.
 
 
 ;; When synchronizing, Org-sync parses the current buffer using
@@ -298,7 +301,6 @@ Return ELEM if it was added, nil otherwise."
       (setq prop-alist (sort prop-alist
                              (lambda (a b)
                                (string< (car b) (car a)))))
-
 
       `(headline
         (:title ,(if deadline

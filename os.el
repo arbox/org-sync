@@ -632,6 +632,22 @@ with :sync conflict-local or conflict-remote."
     (setf (car headline) (car new-headline)
           (cdr headline) (cdr new-headline))))
 
+(defun os-show-conflict (buglist url)
+  "Show conflict in BUGLIST at URL in conflict window."
+  (let ((buf (get-buffer-create (format "*Org-sync conflict at %s*" url))))
+    (with-help-window buf
+      (with-current-buffer buf
+        (erase-buffer)
+        (org-mode)
+        (insert "There were some conflicts while merging.  Here
+are the problematic items.  Look at the :sync property to know
+their origin. Copy what you want to keep in your org buffer and
+sync again.\n\n")
+        (dolist (b (os-get-prop :bugs buglist))
+          (when (and b (os-get-prop :sync b))
+            (insert (org-element-interpret-data (os-bug-to-element b))
+                    "\n")))))))
+
 (defun os-sync ()
   "Update buglists in current buffer."
   (interactive)
@@ -674,15 +690,18 @@ with :sync conflict-local or conflict-remote."
             ;;            (b (nth 1 bugs)))
             ;;       (os-bug-diff a b)))
 
-            (if (os-buglist-dups merged-diff)
-                (message "Synchronization failed, manual merge needed.")
+            (let ((dups (os-buglist-dups merged-diff)))
+              (if dups
+                  (progn
+                    (message "Synchronization failed, manual merge needed.")
+                    (os-show-conflict merged-diff os-base-url))
 
-              (setq merged
-                    (os-remove-unidentified-bug
-                     (os-update-buglist merged (os--send-buglist merged-diff))))
-              (os-set-prop :date-cache (current-time) merged)
-              (os-set-cache os-base-url merged)
-              (message "Synchronization complete."))
+                (setq merged
+                      (os-remove-unidentified-bug
+                       (os-update-buglist merged (os--send-buglist merged-diff))))
+                (os-set-prop :date-cache (current-time) merged)
+                (os-set-cache os-base-url merged)
+                (message "Synchronization complete.")))
 
             ;; replace headlines in local-doc
             (os-replace-headline-by-buglist headline merged)))))

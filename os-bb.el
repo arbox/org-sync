@@ -52,6 +52,7 @@
   "Send HTTP request at URL using METHOD with DATA.
 AUTH is a cons (\"user\" . \"pwd\").  Return the server
 decoded response in JSON."
+  (message "%s %s %s" method url (prin1-to-string data))
   (let* ((url-request-method method)
          (url-request-data data)
          (auth os-bb-auth)
@@ -222,39 +223,25 @@ decoded response in JSON."
 
 ;; override
 (defun os-bb-send-buglist (buglist)
-  "Send a BUGLIST on the bugtracker and return an updated buglist."
+  "Send a BUGLIST on the bugtracker and return new bugs."
   (let* ((new-url (concat os-base-url "/issues"))
-         (new-bugs
-          (mapcar (lambda (b)
-                    (let* ((id (os-get-prop :id b))
-                           (data (os-bb-post-encode (os-bb-bug-to-form b)))
-                           (modif-url (format "%s/%d/" new-url (or id 0)))
-                           (result
-                            (cond
-                             ;; new bug
-                             ((null id)
-                              (os-bb-request "POST" new-url data))
+         (new-bugs))
+    (dolist (b (os-get-prop :bugs buglist))
+      (let* ((id (os-get-prop :id b))
+             (data (os-bb-post-encode (os-bb-bug-to-form b)))
+             (modif-url (format "%s/%d/" new-url (or id 0))))
+        (cond
+         ;; new bug
+         ((null id)
+          (push (os-bb-json-to-bug
+                 (os-bb-request "POST" new-url data)) new-bugs))
 
-                             ;; delete bug
-                             ((eq (os-get-prop :status b) 'delete)
-                              (os-bb-request "DELETE" modif-url))
+         ;; delete bug
+         ((eq (os-get-prop :status b) 'delete)
+          (os-bb-request "DELETE" modif-url))
 
-                             ;; update bug
-                             (t
-                              (os-bb-request "PUT" modif-url data)))))
-
-                      (cond
-                       ;; if bug was :sync same, return it
-                       ((null result)
-                        b)
-
-                       ;; else, result is the updated bug
-                       (t
-                        (os-bb-json-to-bug result)))))
-                  (os-get-prop :bugs buglist))))
-
-    `(:title ,(os-get-prop :title buglist)
-             :url ,os-base-url
-             :bugs ,new-bugs)))
-
+         ;; update bug
+         (t
+          (os-bb-request "PUT" modif-url data)))))
+    `(:bugs ,new-bugs)))
 ;;; os-bb.el ends here

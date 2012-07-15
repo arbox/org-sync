@@ -351,10 +351,9 @@ Return ELEM if it was added, nil otherwise."
   (let* ((todo-keyword (org-element-property :todo-keyword h))
          ;; properties to skip when looking at the PROPERTIES block
          (skip '(:status :title :sync :desc :date-deadline))
-         (status (if (string= "OPEN" todo-keyword) 'open 'closed))
+         (status (intern (downcase todo-keyword)))
          (deadline (os-parse-date (org-element-property :deadline h)))
          (title (car (org-element-property :title h)))
-         (sync (when (string= "DELETE" todo-keyword) 'delete))
          (section (org-element-contents (car (org-element-contents h))))
          (headline-alist (org-element-property
                           :properties
@@ -383,7 +382,6 @@ Return ELEM if it was added, nil otherwise."
     (setq bug (list
                :status status
                :title title
-               :sync sync
                :desc desc
                :date-deadline deadline))
 
@@ -457,7 +455,7 @@ If KEY is already equal to VAL, no change is made."
   (os-with-backend url
    (let* ((buglist (os--fetch-buglist nil))
           (elem (os-buglist-to-element buglist))
-          (bug-keyword '(sequence "OPEN" "|" "CLOSED")))
+          (bug-keyword '(sequence "OPEN" "|" "CLOSED" "DELETE")))
 
      ;; we add the buglist to the cache
      (os-set-prop :date-cache (current-time) buglist)
@@ -469,7 +467,7 @@ If KEY is already equal to VAL, no change is made."
 
        (unless (member bug-keyword org-todo-keywords)
          (goto-char (point-min))
-         (insert "#+TODO: OPEN | CLOSED\n")
+         (insert "#+TODO: OPEN | CLOSED DELETE\n")
          (add-to-list 'org-todo-keywords bug-keyword)
 
          ;; the buffer has to be reparsed in order to have the new

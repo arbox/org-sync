@@ -44,10 +44,8 @@
 ;; wont have an id but it will get one once you sync.
 
 ;; The state is an org TODO state.  It can be either OPEN or CLOSED.
-;; The special DELETE state can be used to remove a bug at the next
-;; sync.  Not all services support this.  The title is just the title
-;; of the headline.  The id is a number in the PROPERTIES block of the
-;; headline.
+;; The title is just the title of the headline.  The id is a number in
+;; the PROPERTIES block of the headline.
 
 ;; Org DEADLINE timestamp are also handled and can be inserted in a
 ;; bug headline which can then be used by the backend if it supports
@@ -76,7 +74,7 @@
 ;; Bug example:
 
 ;; '(:id 3
-;;   :status 'open or 'closed or 'delete
+;;   :status 'open or 'closed
 ;;   :sync 'conflict-local or 'conflict-remote
 ;;   :title "foo"
 ;;   :desc "blah"
@@ -296,7 +294,7 @@ Return ELEM if it was added, nil otherwise."
                            if (and b (not (memq a skip)))
                            collect (cons (substring (symbol-name a) 1)
                                          (prin1-to-string b)))))
-    (unless (eq 'delete (os-get-prop :sync b))
+    (unless (os-get-prop :delete b)
       ;; sort PROPERTIES by property name
       (setq prop-alist (sort prop-alist
                              (lambda (a b)
@@ -352,7 +350,7 @@ Return ELEM if it was added, nil otherwise."
   "Return headline H as a bug."
   (let* ((todo-keyword (org-element-property :todo-keyword h))
          ;; properties to skip when looking at the PROPERTIES block
-         (skip '(:status :title :sync :desc :date-deadline))
+         (skip '(:status :title :desc :date-deadline))
          (status (intern (downcase todo-keyword)))
          (deadline (os-parse-date (org-element-property :deadline h)))
          (title (car (org-element-property :title h)))
@@ -457,7 +455,7 @@ If KEY is already equal to VAL, no change is made."
   (os-with-backend url
    (let* ((buglist (os--fetch-buglist nil))
           (elem (os-buglist-to-element buglist))
-          (bug-keyword '(sequence "OPEN" "|" "CLOSED" "DELETE")))
+          (bug-keyword '(sequence "OPEN" "|" "CLOSED")))
 
      ;; we add the buglist to the cache
      (os-set-prop :date-cache (current-time) buglist)
@@ -469,7 +467,7 @@ If KEY is already equal to VAL, no change is made."
 
        (unless (member bug-keyword org-todo-keywords)
          (goto-char (point-min))
-         (insert "#+TODO: OPEN | CLOSED DELETE\n")
+         (insert "#+TODO: OPEN | CLOSED\n")
          (add-to-list 'org-todo-keywords bug-keyword)
 
          ;; the buffer has to be reparsed in order to have the new
@@ -706,7 +704,7 @@ sync again.\n\n")
             ;; replace headlines in local-doc
             (os-replace-headline-by-buglist headline merged)))))
 
-    (os-add-keyword local-doc "TODO" "OPEN | CLOSED DELETE")
+    (os-add-keyword local-doc "TODO" "OPEN | CLOSED")
 
     ;; since we replace the whole buffer, save-excusion doesn't work so
     ;; we manually (re)store the point

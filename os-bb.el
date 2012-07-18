@@ -38,6 +38,7 @@
 (require 'json)
 
 (defvar url-http-end-of-headers)
+(defvar url-http-response-status)
 
 (defvar os-bb-backend
   '((base-url      . os-bb-base-url)
@@ -72,7 +73,9 @@ decoded response in JSON."
       (setq buf (url-retrieve-synchronously url)))
     (with-current-buffer buf
       (goto-char url-http-end-of-headers)
-      (prog1 (json-read) (kill-buffer)))))
+      (prog1 
+          (cons url-http-response-status (ignore-errors (json-read)))
+        (kill-buffer)))))
 
 ;; override
 (defun os-bb-base-url (url)
@@ -177,7 +180,9 @@ decoded response in JSON."
 (defun os-bb-fetch-buglist (last-update)
   "Return the buglist at os-base-url."
   (let* ((url (concat os-base-url "/issues"))
-         (json (os-bb-request "GET" url))
+         (res (os-bb-request "GET" url))
+         (code (car res))
+         (json (cdr res))
          (title (concat "Bugs of " (os-bb-repo-name url))))
 
     `(:title ,title
@@ -229,19 +234,27 @@ decoded response in JSON."
     (dolist (b (os-get-prop :bugs buglist))
       (let* ((id (os-get-prop :id b))
              (data (os-bb-post-encode (os-bb-bug-to-form b)))
-             (modif-url (format "%s/%d/" new-url (or id 0))))
+             (modif-url (format "%s/%d/" new-url (or id 0)))
+             res)
         (cond
          ;; new bug
          ((null id)
-          (push (os-bb-json-to-bug
-                 (os-bb-request "POST" new-url data)) new-bugs))
+          (setq res (os-bb-request "POST" new-url data))
+          (when (/= (car res) 200)
+            (error "Can't create new bug \"%s\"" (os-get-prop :title b)))
+          (push (os-bb-json-to-bug (cdr res)) new-bugs))
 
          ;; delete bug
-         ((eq (os-get-prop :status b) 'delete)
-          (os-bb-request "DELETE" modif-url))
+         ((os-get-prop :delete b)
+          (setq res (os-bb-request "DELETE" modif-url))
+          (when (not (member (car res) '(404 204)))
+            (error "Can't delete bug #%d" id)))
 
          ;; update bug
          (t
-          (os-bb-request "PUT" modif-url data)))))
+          (setq res (os-bb-request "PUT" modif-url data))
+          (when (/= (car res) 200)
+            (error "Can't update bug #%id" id))
+          (push (os-bb-json-to-bug (cdr res)) new-bugs)))))
     `(:bugs ,new-bugs)))
 ;;; os-bb.el ends here

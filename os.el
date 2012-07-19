@@ -265,9 +265,27 @@ Return ELEM if it was added, nil otherwise."
           (error "No base-url backend available."))))
 
 
+;; OPEN bugs sorted by mod time then CLOSED bugs sorted by mod time
+(defun os-bug-sort (a b)
+  "Return non-nil if bug A should appear before bug B."
+  (flet ((time-less-safe (a b)
+                         (if (and a b)
+                             (time-less-p a b)
+                           (or a b))))
+    (let* ((ao (eq 'open (os-get-prop :status a)))
+           (bc (not (eq 'open (os-get-prop :status b))))
+           (am (time-less-safe
+                (os-get-prop :date-modification b)
+                (os-get-prop :date-modification a))))
+      (or
+       (and ao am)
+       (and bc am)
+       (and ao bc)))))
+
 (defun os-buglist-to-element (bl)
   "Return buglist BL as an element."
-  (let* ((elist (delq nil (mapcar 'os-bug-to-element (os-get-prop :bugs bl))))
+  (let* ((sorted (sort (os-get-prop :bugs bl) 'os-bug-sort))
+         (elist (delq nil (mapcar 'os-bug-to-element sorted)))
          (title (os-get-prop :title bl))
          (url (os-get-prop :url bl)))
     `(headline

@@ -406,7 +406,7 @@ Return ELEM if it was added, nil otherwise."
                :desc desc
                :date-deadline deadline))
 
-
+    ;; add all properties
     (mapc (lambda (x)
             (let ((k (intern (concat ":" (car x))))
                   (v (when (and (cdr x) (not (equal (cdr x) "")))
@@ -597,9 +597,14 @@ with :sync conflict-local or conflict-remote."
       (let* ((id (os-get-prop :id lbug))
              (rbug (os-get-bug-id remote id))
             rnew lnew)
-        ;; add both remote and local with special tags when there's a
+
+        ;; if there's a remote bug with the same id, we have a
         ;; conflict
-        (if rbug ;; TODO: maybe test diff between rbug lbug
+
+        ;; if the local bug has a sync prop, it was merged by the
+        ;; user, so we keep the local one (which might be the
+        ;; remote from a previous sync)
+        (if (and rbug (null (os-get-prop :sync lbug)) (os-bug-diff lbug rbug))
             (progn
               (setq lnew (copy-tree lbug))
               (os-set-prop :sync 'conflict-local lnew)
@@ -607,9 +612,13 @@ with :sync conflict-local or conflict-remote."
               (os-set-prop :sync 'conflict-remote rnew)
               (push rnew merge)
               (push lnew merge))
-          (push lbug merge))
+          (progn
+            (push lbug merge)))
+
+        ;; mark it
         (puthash id t added)))
 
+    ;; add new remote bug which are the unmarked bugs in remote
     (dolist (rbug (os-get-prop :bugs remote))
       (unless (gethash (os-get-prop :id rbug) added)
         (push rbug merge)))

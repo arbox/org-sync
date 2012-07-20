@@ -73,10 +73,14 @@ Writing a new backend is easy.  This is the basic template:
 ;; you can use the variable os-base-url
 (defun os-demo-fetch-buglist (last-update)
   "Fetch buglist from demo.com (anything that happened after LAST-UPDATE)"
-  
   ;; a buglist is just a plist
   `(:title "Stuff at demo.com"
            :url ,os-base-url
+
+           ;; add a :since property set to last-update if you return
+           ;; only the bugs updated since it.  omit it or set it to
+           ;; nil if you ignore last-update and fetch all the bugs of
+           ;; the repo.
 
            ;; bugs contains a list of bugs
            ;; a bug is a plist too
@@ -85,10 +89,27 @@ Writing a new backend is easy.  This is the basic template:
 ;; this overrides os--send-buglist
 (defun os-demo-send-buglist (buglist)
   "Send BUGLIST to demo.com and return updated buglist"
-  ;; we return the same thing for the demo
-  `(:title "Stuff at demo.com"
-           :url ,os-base-url
-           :bugs ((:id 1 :title "Foo" :status open :desc "bar."))))
+  ;; here you should loop over :bugs in buglist
+  (dolist (b (os-get-prop :bugs buglist))
+    (cond
+      ;; new bug (no id)
+      ((null (os-get-prop :id b)
+        '(do-stuff)))
+
+      ;; delete bug
+      ((os-get-prop :delete b)
+        '(do-stuff))
+
+      ;; else, modified bug
+      (t
+        '(do-stuff))))
+
+  ;; return any bug that has changed (modification date, new bugs,
+  ;; etc).  they will overwrite/be added in the buglist in os.el
+
+  ;; we return the same thing for the demo.
+  ;; :bugs is the only property used from this function in os.el
+  `(:bugs ((:id 1 :title "Foo" :status open :desc "bar."))))
 #+end_src
 
 That's it.  A bug has to have at least an id, title and status

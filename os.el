@@ -679,7 +679,7 @@ sync again.\n\n")
 (defun os-sync ()
   "Update buglists in current buffer."
   (interactive)
-  (kill-buffer os-conflict-buffer)
+  (ignore-errors (kill-buffer os-conflict-buffer))
   (let* ((local-doc (org-element-parse-buffer))
          (local-headlines (os-find-buglists local-doc)))
 

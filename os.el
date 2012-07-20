@@ -162,6 +162,9 @@
   "Org-sync cache for buglists.
 Maps URLs to buglist cache.")
 
+(defvar os-conflict-buffer "*Org-sync conflict*"
+  "Name of the conflict buffer")
+
 (defun os-action-fun (action)
   "Return current backend ACTION function or nil."
   (unless (or (null action) (null os-backend))
@@ -650,7 +653,7 @@ with :sync conflict-local or conflict-remote."
 
 (defun os-show-conflict (buglist url)
   "Show conflict in BUGLIST at URL in conflict window."
-  (let ((buf (get-buffer-create (format "*Org-sync conflict at %s*" url))))
+  (let ((buf (get-buffer-create os-conflict-buffer)))
     (with-help-window buf
       (with-current-buffer buf
         (erase-buffer)
@@ -667,6 +670,7 @@ sync again.\n\n")
 (defun os-sync ()
   "Update buglists in current buffer."
   (interactive)
+  (kill-buffer os-conflict-buffer)
   (let* ((local-doc (org-element-parse-buffer))
          (local-headlines (os-find-buglists local-doc)))
 

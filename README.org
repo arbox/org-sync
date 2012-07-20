@@ -5,8 +5,8 @@ documents.
 
 * Tutorial
 
-Make sure you have org-element.el (it's in the contrib directory of
-org-mode) and load org-sync.el, os-bb.el and os-github.el.
+Make sure you have =org-element.el= (it's in the contrib directory of
+org-mode) and load =org-sync.el=, =os-bb.el= and =os-github.e=.
 
 Next, open a new org-mode buffer and run =M-x os-import=.  It prompts
 you for an URL.  You can try my github test repo:
@@ -27,21 +27,22 @@ the buglists in the document.
 
 * How to write a new backend
 
-Writing a new backend is easy.  This is the basic template:
+Writing a new backend is easy.  If something is not clear, try to read
+the header in =os.el= or one of the existing backend.  
 
 #+begin_src emacs-lisp
 ;; backend symbol/name: demo
 ;; the symbol is used to find and call your backend functions (for now)
 
 ;; what kind of urls does you backend handle?
-;; add it to os-backend-alist in org-sync.el:
+;; add it to os-backend-alist in os.el:
 
 (defvar os-backend-alist
   '(("github.com/\\(?:repos/\\)?[^/]+/[^/]+"  . os-github-backend)
     ("bitbucket.org/[^/]+/[^/]+"              . os-bb-backend)
     ("demo.com"                               . os-demo-backend)))
 
-;; if you have already loaded org-sync.el, you'll have to add it
+;; if you have already loaded os.el, you'll have to add it
 ;; manually in that case just eval this in *scratch*
 (add-to-list 'os-backend-alist (cons "demo.com" 'os-demo-backend))
 
@@ -115,11 +116,11 @@ Writing a new backend is easy.  This is the basic template:
 That's it.  A bug has to have at least an id, title and status
 properties.  Other recognized but optionnal properties are
 =:date-deadline=, =:date-creation=, =:date-modification=, =:desc=.
-Any other properties are automatically added in the PROPERTIES block
+Any other properties are automatically added in the =PROPERTIES= block
 of the bug via =prin1-to-string= and are =read= back by org-sync.  All
 the dates are regular emacs time object.  For more details you can
-look at the github backend in os-github.el.
+look at the github backend in =os-github.el=.
 
 * More information
 
-You can find more in the org-sync.el commentary headers.
+You can find more in the =os.el= commentary headers.

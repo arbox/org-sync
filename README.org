@@ -28,7 +28,7 @@ the buglists in the document.
 * How to write a new backend
 
 Writing a new backend is easy.  If something is not clear, try to read
-the header in =os.el= or one of the existing backend.  
+the header in =os.el= or one of the existing backend.
 
 #+begin_src emacs-lisp
 ;; backend symbol/name: demo

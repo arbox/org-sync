@@ -152,7 +152,8 @@
 
 (defvar os-backend-alist
   '(("github.com/\\(?:repos/\\)?[^/]+/[^/]+" . os-github-backend)
-    ("bitbucket.org/[^/]+/[^/]+"             . os-bb-backend))
+    ("bitbucket.org/[^/]+/[^/]+"             . os-bb-backend)
+    ("hostedredmine.com/projects/[^/]+"      . os-rmine-backend))
   "Alist of url patterns vs corresponding org-sync backend.")
 
 (defvar os-cache-file (concat user-emacs-directory "org-sync-cache")

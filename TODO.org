@@ -29,7 +29,6 @@ variable defined in each backend. This variable is an alist that maps
 verb symbol (base-url, fetch-buglist, send-buglist for now) to
 function symbol.
 
-** TODO add DELETE as a possible task status.
 * Backends
 Write backends for some free software.
 

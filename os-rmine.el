@@ -136,7 +136,6 @@ decoded response in JSON."
             :date-creation ,ctime
             :date-modification ,mtime))))
 
-
 (defun os-rmine-fetch-buglist (last-update)
   "Return the buglist at os-base-url."
   (let* ((url (concat os-base-url "/issues.json"))
@@ -148,3 +147,40 @@ decoded response in JSON."
     `(:title ,title
              :url ,os-base-url
              :bugs ,(mapcar 'os-rmine-json-to-bug (cdr (assoc 'issues json))))))
+
+(defun os-rmine-bug-to-json (bug)
+  (json-encode
+   `(issues .
+            ((subject     . ,(os-get-prop :title bug))
+             (description . ,(os-get-prop :desc bug))))))
+
+(defun os-rmine-send-buglist (buglist)
+    "Send a BUGLIST on the bugtracker and return new bugs."
+    (let* ((new-url (concat os-base-url "/issues.json"))
+           (new-bugs))
+      (dolist (b (os-get-prop :bugs buglist))
+        (let* ((id (os-get-prop :id b))
+               (data (os-rmine-bug-to-json b))
+               (modif-url (format "%s/issues/%d.json" os-base-url (or id 0)))
+               res)
+          (cond
+           ;; new bug
+           ((null id)
+            (setq res (os-rmine-request "POST" new-url data))
+            (when (/= (car res) 200)
+              (error "Can't create new bug \"%s\"" (os-get-prop :title b)))
+            (push (os-rmine-json-to-bug (cdr res)) new-bugs))
+
+           ;; delete bug
+           ((os-get-prop :delete b)
+            (setq res (os-rmine-request "DELETE" modif-url))
+            (when (not (member (car res) '(404 204)))
+              (error "Can't delete bug #%d" id)))
+
+           ;; update bug
+           (t
+            (setq res (os-rmine-request "PUT" modif-url data))
+            (when (/= (car res) 200)
+              (error "Can't update bug #%id" id))
+            (push (os-rmine-json-to-bug (cdr res)) new-bugs)))))
+      `(:bugs ,new-bugs)))

@@ -76,7 +76,6 @@
   "Send HTTP request at URL using METHOD with DATA.
 AUTH is a cons (\"user\" . \"pwd\").  Return the server
 decoded response in JSON."
-  (message "%s %s %s" method url (prin1-to-string data))
   (let* ((url-request-method method)
          (url-request-data data)
          (url-request-extra-headers
@@ -85,15 +84,11 @@ decoded response in JSON."
          (auth os-rmine-auth)
          (buf))
 
-    (if (consp auth)
-        ;; dynamically bind auth related vars
-        (let* ((str (concat (car auth) ":" (cdr auth)))
-               (encoded (base64-encode-string str))
-               (login `(("www.hostedredmine.com" ("Redmine API" . ,encoded))))
-               (url-basic-auth-storage 'login))
-          (setq buf (url-retrieve-synchronously url)))
-      ;; nothing more to bind
-      (setq buf (url-retrieve-synchronously url)))
+    (when (stringp auth)
+      (setq url (os-url-param url `(("key" . ,auth)))))
+
+    (message "%s %s %s" method url (prin1-to-string data))
+    (setq buf (url-retrieve-synchronously url))
     (with-current-buffer buf
       (goto-char url-http-end-of-headers)
       (prog1
@@ -150,9 +145,9 @@ decoded response in JSON."
 
 (defun os-rmine-bug-to-json (bug)
   (json-encode
-   `(issues .
+   `((issues .
             ((subject     . ,(os-get-prop :title bug))
-             (description . ,(os-get-prop :desc bug))))))
+            (description  . ,(os-get-prop :desc bug)))))))
 
 (defun os-rmine-send-buglist (buglist)
     "Send a BUGLIST on the bugtracker and return new bugs."
@@ -181,6 +176,6 @@ decoded response in JSON."
            (t
             (setq res (os-rmine-request "PUT" modif-url data))
             (when (/= (car res) 200)
-              (error "Can't update bug #%id" id))
+              (error "Can't update bug #%d" id))
             (push (os-rmine-json-to-bug (cdr res)) new-bugs)))))
       `(:bugs ,new-bugs)))

@@ -269,6 +269,47 @@ Return ELEM if it was added, nil otherwise."
           (error "No base-url backend available."))))
 
 
+(defun os-url-param (url param)
+  "Return URL with PARAM alist appended."
+  (let* ((split (split-string url "\\?" t))
+         (base (car split))
+         (rest (cadr split))
+         (final))
+
+    ;; read all param
+    (when rest
+      (mapc
+       (lambda (s)
+         (let* ((split (split-string s "=" t))
+                (var (car split))
+                (val (cadr split))
+                (cell (assoc var final)))
+           (if cell
+               (setcdr cell val)
+             (push (cons var val) final))))
+       (split-string rest "&" t)))
+
+    ;; add params from arg
+    (mapc (lambda (p)
+            (let* ((var (car p))
+                   (val (cdr p))
+                   (cell (assoc var final)))
+              (if cell
+                  (setcdr cell val)
+                (push p final))))
+          param)
+
+    ;; output new url
+    (concat
+     base
+     "?"
+     (mapconcat (lambda (p)
+                  (concat
+                   (url-hexify-string (car p))
+                   "="
+                   (url-hexify-string (cdr p))))
+                final "&"))))
+
 ;; OPEN bugs sorted by mod time then CLOSED bugs sorted by mod time
 (defun os-bug-sort (a b)
   "Return non-nil if bug A should appear before bug B."

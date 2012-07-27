@@ -46,7 +46,10 @@
 (defvar os-rmine-auth nil
   "Redmine login (\"user\" . \"pwd\")")
 
-(defvar os-rmine-date-regex
+(defvar os-rmine-project-id nil
+  "Project id of current buglist.")
+
+(defconst os-rmine-date-regex
   (rx
    (seq
     (group (repeat 4 digit)) "/"
@@ -62,6 +65,15 @@
            (repeat 2 digit)
            (repeat 2 digit))))
   "Regex to parse date returned by redmine.")
+
+(defun os-rmine-fetch-meta ()
+  "Set `os-rmine-project-id' for now."
+  (let* ((res (os-rmine-request "GET" (concat os-base-url ".json")))
+         (code (car res))
+         (json (cdr res)))
+    (when (/= code 200)
+      (error "Can't fetch data from %s, wrong url?" os-base-url))
+    (setq os-rmine-project-id (cdr (assoc 'id (cdr (assoc 'project json)))))))
 
 (defun os-rmine-parse-date (date)
   "Return time object of DATE."
@@ -153,6 +165,9 @@ decoded response in JSON."
     "Send a BUGLIST on the bugtracker and return new bugs."
     (let* ((new-url (concat os-base-url "/issues.json"))
            (new-bugs))
+
+      (os-rmine-fetch-meta)
+
       (dolist (b (os-get-prop :bugs buglist))
         (let* ((id (os-get-prop :id b))
                (data (os-rmine-bug-to-json b))

@@ -407,7 +407,7 @@ Return ELEM if it was added, nil otherwise."
              :url ,url
              :bugs ,(mapcar
                      'os-headline-to-bug
-                     (nthcdr 1 (org-element-contents h))))))
+                     (nthcdr 1 (org-element-contents (car (org-element-contents h))))))))
 
 
 (defun os-headline-to-bug (h)

@@ -333,6 +333,7 @@ Return ELEM if it was added, nil otherwise."
          (elist (delq nil (mapcar 'os-bug-to-element sorted)))
          (title (os-get-prop :title bl))
          (url (os-get-prop :url bl)))
+    (os-set-prop :bugs sorted bl)
     `(headline
       (:level 1 :title (,title))
       (section

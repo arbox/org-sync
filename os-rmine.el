@@ -146,8 +146,8 @@ decoded response in JSON."
 (defun os-rmine-bug-to-json (bug)
   (json-encode
    `((issues .
-            ((subject     . ,(os-get-prop :title bug))
-            (description  . ,(os-get-prop :desc bug)))))))
+             ((subject     . ,(os-get-prop :title bug))
+              (description . ,(os-get-prop :desc bug)))))))
 
 (defun os-rmine-send-buglist (buglist)
     "Send a BUGLIST on the bugtracker and return new bugs."

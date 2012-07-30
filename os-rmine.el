@@ -110,8 +110,15 @@ decoded response in JSON."
 ;; override
 (defun os-rmine-base-url (url)
   "Return base URL."
-  (when (string-match "^\\(?:https?://\\)?\\(?:www\\.\\)?hostedredmine.com/projects/\\([^/]+\\)" url)
-    (concat "http://www.hostedredmine.com/projects/" (match-string 1 url))))
+  ;; if no url type, try http
+  (when (not (string-match "^https?://" url))
+    (setq url (concat "http://" url)))
+
+  (let ((purl (url-generic-parse-url url)))
+    (when (string-match "^.*/projects/\\([^/]+\\)" (url-filename purl))
+      (concat (url-type purl) "://"
+              (url-host purl)
+              (match-string 0 (url-filename purl))))))
 
 (defun os-rmine-repo-name (url)
   "Return repo name at URL."

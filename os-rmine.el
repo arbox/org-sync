@@ -157,29 +157,38 @@ decoded response in JSON."
 
 (defun os-rmine-bug-to-json (bug)
   (json-encode
-   `((issues .
-             ((subject     . ,(os-get-prop :title bug))
-              (description . ,(os-get-prop :desc bug)))))))
+   `((issue .
+            ((subject     . ,(os-get-prop :title bug))
+             (description . ,(os-get-prop :desc bug)))))))
+
+
+;; (defun os-rmine-code-success-p (code)
+;;   "Return non-nil if HTTP CODE is a success code."
+;;   (and (<= 200 code) (< code 300)))
 
 (defun os-rmine-send-buglist (buglist)
     "Send a BUGLIST on the bugtracker and return new bugs."
     (let* ((new-url (concat os-base-url "/issues.json"))
-           (new-bugs))
+           (root-url (replace-regexp-in-string "/projects/.+"
+                                               "" os-base-url))
+           new-bugs)
 
       (os-rmine-fetch-meta)
 
       (dolist (b (os-get-prop :bugs buglist))
         (let* ((id (os-get-prop :id b))
                (data (os-rmine-bug-to-json b))
-               (modif-url (format "%s/issues/%d.json" os-base-url (or id 0)))
+               (modif-url (format "%s/issues/%d.json" root-url (or id 0)))
                res)
           (cond
            ;; new bug
            ((null id)
             (setq res (os-rmine-request "POST" new-url data))
-            (when (/= (car res) 200)
+            (when (/= (car res) 201)
               (error "Can't create new bug \"%s\"" (os-get-prop :title b)))
-            (push (os-rmine-json-to-bug (cdr res)) new-bugs))
+            (push (os-rmine-json-to-bug
+                   (cdr (assoc 'issue (cdr res))))
+                  new-bugs))
 
            ;; delete bug
            ((os-get-prop :delete b)
@@ -192,5 +201,13 @@ decoded response in JSON."
             (setq res (os-rmine-request "PUT" modif-url data))
             (when (/= (car res) 200)
               (error "Can't update bug #%d" id))
-            (push (os-rmine-json-to-bug (cdr res)) new-bugs)))))
+
+            ;; fetch the new version since redmine doesn't send it
+            (setq res (os-rmine-request "GET" modif-url))
+            (when (/= (car res) 200)
+              (error "Can't update bug #%d" id))
+
+            (push (os-rmine-json-to-bug
+                   (cdr (assoc 'issue (cdr res))))
+                  new-bugs)))))
       `(:bugs ,new-bugs)))

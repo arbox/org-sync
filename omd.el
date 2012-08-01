@@ -166,12 +166,16 @@ characters."
 
 (defun omd-shuffle-elem (elem &optional recurse)
   "Shuffle the order of the contents of ELEM."
-  (let ((cont
-         (map 'list 'identity
-              (shuffle-vector
-               (map 'vector 'identity (omd-get-contents elem))))))
-    (omd-set-contents elem cont)
-    elem))
+  (when (listp elem)
+    (let ((cont
+           (map 'list 'identity
+                (shuffle-vector
+                 (map 'vector 'identity (omd-get-contents elem))))))
+      (omd-set-contents elem cont)
+      (when recurse
+        (dolist (e cont)
+          (omd-shuffle-elem e)))
+      elem)))
 
 (defun omd-test ()
   ;; original doc is 2 headlines with a list

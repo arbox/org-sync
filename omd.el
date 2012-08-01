@@ -133,6 +133,46 @@ characters."
   (with-temp-file file
     (insert (omd-to-string string))))
 
+(defun omd-random-insert (elem list)
+  "Insert ELEM in LIST at a random position."
+  (let* ((pos (omd-rand 0 (length list))))
+    (if (= pos 0)
+        (cons elem list)
+      (let ((cell (nthcdr (1- pos) list)))
+        (setcdr cell
+                (cons elem (cdr cell))))
+      list)))
+
+(defun omd-mutate-elem-list (elem &optional nb)
+  "Append NB items at random positions in every list of ELEM."
+  (unless nb
+    (setq nb 1))
+  (let* ((type (nth 0 elem))
+         (cont (nthcdr 2 elem)))
+    (cond
+     ((eq 'list type)
+      (omd-set-contents
+       elem
+       (dotimes (i nb cont)
+         (setq cont
+               (omd-random-insert (omd-random-text (omd-rand 1 3) 30)
+                                  cont)))))
+
+     ((member type '(headline doc))
+      (dolist (e cont)
+        (omd-mutate-doc-list e nb)))))
+  elem)
+
+
+(defun omd-shuffle-elem (elem &optional recurse)
+  "Shuffle the order of the contents of ELEM."
+  (let ((cont
+         (map 'list 'identity
+              (shuffle-vector
+               (map 'vector 'identity (omd-get-contents elem))))))
+    (omd-set-contents elem cont)
+    elem))
+
 (defun omd-test ()
   ;; original doc is 2 headlines with a list
   (let* ((doc-orig (omd-new-doc

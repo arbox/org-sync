@@ -351,21 +351,32 @@ Return ELEM if it was added, nil otherwise."
 (defun os-bug-to-element (b)
   "Return bug B as a TODO element if it is visible or nil."
   ;; not in PROPERTIES block
-  (let* ((skip '(:title :status :desc :old-bug :date-deadline))
+  (let* ((skip '(:title :status :desc :old-bug
+                        :date-deadline :date-creation :date-modification))
          (title (os-get-prop :title b))
-         (deadline (os-get-prop :date-deadline b))
+         (dtime (os-get-prop :date-deadline b))
+         (ctime (os-get-prop :date-creation b))
+         (mtime (os-get-prop :date-modification b))
          (prop-alist (loop for (a b) on b by #'cddr
                            if (and b (not (memq a skip)))
                            collect (cons (substring (symbol-name a) 1)
                                          (prin1-to-string b)))))
     (unless (os-get-prop :delete b)
+      ;; add date-xxx props manually in a human readable way.
+      (push (cons
+             "date-creation"
+             (os-time-to-string ctime)) prop-alist)
+      (push (cons
+             "date-modification"
+             (os-time-to-string mtime)) prop-alist)
+
       ;; sort PROPERTIES by property name
       (setq prop-alist (sort prop-alist
                              (lambda (a b)
                                (string< (car b) (car a)))))
 
       `(headline
-        (:title ,(if deadline
+        (:title ,(if dtime
                      (list
                       (format "%s DEADLINE: " title)
                       `(timestamp
@@ -414,9 +425,9 @@ Return ELEM if it was added, nil otherwise."
   "Return headline H as a bug."
   (let* ((todo-keyword (org-element-property :todo-keyword h))
          ;; properties to skip when looking at the PROPERTIES block
-         (skip '(:status :title :desc :date-deadline))
+         (skip '(:status :title :desc :date-deadline :date-creation :date-modification))
          (status (intern (downcase (or todo-keyword "open"))))
-         (deadline (os-parse-date (org-element-property :deadline h)))
+         (dtime (os-parse-date (org-element-property :deadline h)))
          (title (car (org-element-property :title h)))
          (section (org-element-contents (car (org-element-contents h))))
          (headline-alist (org-element-property
@@ -424,6 +435,8 @@ Return ELEM if it was added, nil otherwise."
                           (car
                            (org-element-contents
                             (car (org-element-contents h))))))
+         (ctime (os-parse-date (cdr (assoc "date-creation" headline-alist))))
+         (mtime (os-parse-date (cdr (assoc "date-modification" headline-alist))))
          (desc (org-element-interpret-data
                 (remove-if
                  (lambda (e)
@@ -440,14 +453,16 @@ Return ELEM if it was added, nil otherwise."
     ;; on the next one.  org-element doesn't parse it the same way
     ;; when on the same line, remove DEADLINE tag from title
     ;; else ignore DEADLINE tag in paragraph
-    (when deadline
+    (when dtime
       (setq title (replace-regexp-in-string " DEADLINE: " "" title)))
 
     (setq bug (list
                :status status
                :title title
                :desc desc
-               :date-deadline deadline))
+               :date-deadline dtime
+               :date-creation ctime
+               :date-modification mtime))
 
     ;; add all properties
     (mapc (lambda (x)

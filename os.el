@@ -415,7 +415,7 @@ Return ELEM if it was added, nil otherwise."
   (let* ((todo-keyword (org-element-property :todo-keyword h))
          ;; properties to skip when looking at the PROPERTIES block
          (skip '(:status :title :desc :date-deadline))
-         (status (intern (downcase todo-keyword)))
+         (status (intern (downcase (or todo-keyword "open"))))
          (deadline (os-parse-date (org-element-property :deadline h)))
          (title (car (org-element-property :title h)))
          (section (org-element-contents (car (org-element-contents h))))

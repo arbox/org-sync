@@ -18,7 +18,7 @@ Make sure you have =org-element.el= (it's in the contrib directory of
 org-mode). If you don't have it you can download a recent version in the
 org-sync directory:
 
-#+begin_src shell
+#+begin_src sh
 wget -O org-element.el 'http://orgmode.org/w/?p=org-mode.git;a=blob_plain;f=contrib/lisp/org-element.el;hb=5057ae0fc2c0d551a83d3c3e9bd621b751db9f09'
 #+end_src
 

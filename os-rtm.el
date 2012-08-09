@@ -36,7 +36,7 @@
 
 (defvar os-rtm-api-key "e9b28a9ac67f1bffc3dab1bd94dab722")
 (defvar os-rtm-shared-secret "caef7e509a8dcd82")
-(defvar os-rtm-frob)
+(defvar os-rtm-token)
 
 (defvar url-http-end-of-headers)
 (defvar url-http-response-status)
@@ -52,6 +52,9 @@
 
   (unless  (string-match "/auth/" url)
     (push '("format" . "json") param))
+
+  (when os-rtm-token
+    (push `("auth_token" . ,os-rtm-token) param))
 
   (push `("api_key" . ,os-rtm-api-key) param)
 
@@ -91,7 +94,11 @@
     (setq url (os-url-param "http://www.rememberthemilk.com/services/auth/" param))
     (browse-url url)
     (when (yes-or-no-p "Application accepted? ")
-      (os-rtm-call "rtm.auth.getToken" `(("frob" . ,frob))))))
+      (setq
+       os-rtm-auth
+       (os-getalist 
+        (cdr (os-rtm-call "rtm.auth.getToken" `(("frob" . ,frob)))) 
+        'rsp 'auth 'token)))))
 
 (defun os-rtm-sign (param-alist)
   "Return the signature for the PARAM-ALIST request."

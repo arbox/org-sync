@@ -735,6 +735,12 @@ sync again.\n\n")
             (insert (org-element-interpret-data (os-bug-to-element b))
                     "\n")))))))
 
+(defun os-getalist (obj &rest keys)
+  "Apply assoc in nested alist OBJ with KEYS."
+  (let ((p obj))
+    (dolist (k keys p)
+      (setq p (cdr (assoc k p))))))
+
 (defun os-sync ()
   "Update buglists in current buffer."
   (interactive)

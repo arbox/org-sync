@@ -41,9 +41,10 @@
 ;; PROPERTIES block.  This headline is composed of a list of
 ;; subheadlines which corresponds to bugs.  The requirement for a bug
 ;; is to have a state, a title and an id.  If you add a new bug, it
-;; wont have an id but it will get one once you sync.
+;; wont have an id but it will get one once you sync.  If you omit the
+;; status, OPEN is chose.
 
-;; The state is an org TODO state.  It can be either OPEN or CLOSED.
+;; The status is an org TODO state.  It can be either OPEN or CLOSED.
 ;; The title is just the title of the headline.  The id is a number in
 ;; the PROPERTIES block of the headline.
 

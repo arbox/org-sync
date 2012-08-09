@@ -3,10 +3,26 @@
 Org-sync is a tool to synchronize online bugtrackers with org
 documents.
 
-* Tutorial
+* Installation
+
+Put the org-sync directory in your load-path and load the org-sync
+backend you need. You can add this to your .emacs:
+
+#+begin_src emacs-lisp
+(add-to-list 'load-path "path/to/org-sync")
+(mapc 'load
+      '("org-element" "os" "os-bb" "os-github" "os-rmine"))
+#+end_src
 
 Make sure you have =org-element.el= (it's in the contrib directory of
-org-mode) and load =org-sync.el=, =os-bb.el= and =os-github.e=.
+org-mode). If you don't have it you can download a recent version in the
+org-sync directory:
+
+#+begin_src shell
+wget -O org-element.el 'http://orgmode.org/w/?p=org-mode.git;a=blob_plain;f=contrib/lisp/org-element.el;hb=5057ae0fc2c0d551a83d3c3e9bd621b751db9f09'
+#+end_src
+
+* Tutorial
 
 Next, open a new org-mode buffer and run =M-x os-import=.  It prompts
 you for an URL.  You can try my github test repo:

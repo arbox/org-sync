@@ -36,25 +36,77 @@
 
 (defvar os-rtm-api-key "e9b28a9ac67f1bffc3dab1bd94dab722")
 (defvar os-rtm-shared-secret "caef7e509a8dcd82")
-(defvar os-rtm-token)
+(defvar os-rtm-token nil)
 
 (defvar url-http-end-of-headers)
 (defvar url-http-response-status)
 
-(defun os-rtm-call (method &optional args)
+(defun os-rtm-call (method &rest args)
   "Call API METHOD and return result."
   (let* ((param `(("method" . ,method)
                   ,@args)))
     (os-rtm-request "GET" "http://api.rememberthemilk.com/services/rest/" param nil 'sign)))
 
+(defvar os-rtm-backend
+  '((base-url      . os-rtm-base-url)
+    (fetch-buglist . os-rtm-fetch-buglist)
+    (send-buglist  . os-rtm-send-buglist))
+  "Bitbucket backend.")
+
+(defun os-rtm-base-url (url)
+  "Return base URL. Not used with RTM."
+  url)
+
+(defun os-rtm-filter-tasks (response)
+  "Return all the real task from RTM rtm.tasks.getList RESPONSE."
+  (let (final)
+    (mapc (lambda (e)
+            (when (assoc 'taskseries e)
+              (mapc (lambda (task-series)
+                      (push task-series final))
+                    (os-getalist e 'taskseries))))
+          (os-getalist (cdr response) 'rsp 'tasks 'list))
+    final))
+
+(defun os-rtm-fetch-buglist (last-update)
+  (unless os-rtm-token
+    (os-rtm-auth))
+  (let ((bl
+         (mapcar 'os-rtm-task-to-bug
+                 (os-rtm-filter-tasks (os-rtm-call "rtm.tasks.getList")))))
+    `(:title "Tasks"
+             :url ,os-base-url
+             :bugs ,bl)))
+
+(defun os-rtm-task-to-bug (task)
+  "Return TASK as a bug."
+  (flet ((v (&rest key) (apply 'os-getalist task key)))
+    (let* ((id (string-to-number (v 'id)))
+           (title (v 'name))
+           (status (if (string= (v 'task 'completed) "")
+                       'open
+                     'closed))
+           (priority (v 'task 'priority))
+           (ctime (os-parse-date (v 'created)))
+           (mtime (os-parse-date (v 'modified)))
+           (dtime (os-parse-date (v 'task 'due))))
+      `(:id ,id
+            :title ,title
+            :status ,status
+            :priority ,priority
+            :date-creation ,ctime
+            :date-modification ,mtime
+            :date-deadline ,dtime))))
+
+
 (defun os-rtm-request (method url &optional param data sign)
   "Send HTTP request at URL using METHOD with DATA."
 
   (unless  (string-match "/auth/" url)
-    (push '("format" . "json") param))
+    (push (cons "format" "json") param))
 
   (when os-rtm-token
-    (push `("auth_token" . ,os-rtm-token) param))
+    (push (cons "auth_token" os-rtm-token) param))
 
   (push `("api_key" . ,os-rtm-api-key) param)
 
@@ -74,6 +126,7 @@
     (setq buf (url-retrieve-synchronously url))
     (with-current-buffer buf
       (goto-char url-http-end-of-headers)
+      (message "%s" (buffer-substring (point) (point-max)))
       (prog1
           (cons url-http-response-status (ignore-errors (json-read)))
         (kill-buffer)))))
@@ -95,9 +148,9 @@
     (browse-url url)
     (when (yes-or-no-p "Application accepted? ")
       (setq
-       os-rtm-auth
-       (os-getalist 
-        (cdr (os-rtm-call "rtm.auth.getToken" `(("frob" . ,frob)))) 
+       os-rtm-token
+       (os-getalist
+        (cdr (os-rtm-call "rtm.auth.getToken" `("frob" . ,frob)))
         'rsp 'auth 'token)))))
 
 (defun os-rtm-sign (param-alist)

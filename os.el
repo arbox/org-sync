@@ -378,13 +378,12 @@ Return ELEM if it was added, nil otherwise."
                                (string< (car b) (car a)))))
 
       `(headline
-        (:title ,(if dtime
-                     (list
-                      (format "%s DEADLINE: " title)
-                      `(timestamp
-                        (:value
-                         ,(format-time-string (org-time-stamp-format)))))
-                   title)
+        (:title ,(concat
+                  title
+                  (when dtime
+                    (concat
+                     " DEADLINE: "
+                     (format-time-string (org-time-stamp-format) dtime))))
                 :level 2
                 :todo-type todo
                 :todo-keyword ,(upcase (symbol-name (os-get-prop :status b))))

@@ -209,8 +209,10 @@ JSON response."
       (match-string 1 url)
     "<project name>"))
 
+;; XXX: we need an actual markdown parser here...
 (defun os-github-filter-desc (desc)
   "Return a filtered description of a GitHub description."
+  (setq desc (replace-regexp-in-string "^\\*" "-" desc))
   (replace-regexp-in-string "\\([^ \t\n]\\)[ \t\n]*\\'"
                             "\\1\n"
                             (replace-regexp-in-string "\r\n" "\n" desc)))

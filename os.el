@@ -609,7 +609,7 @@ The value returned is a list of duplicated ids."
 
 (defun os-parse-date (date)
   "Parse and return DATE as a time or nil."
-  (when date
+  (when (and (stringp date) (not (string= date "")))
     (date-to-time date)))
 
 (defun os-time-to-string (time)

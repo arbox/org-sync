@@ -445,6 +445,7 @@ Return ELEM if it was added, nil otherwise."
       (let ((type (org-element-type e))
             (content (org-element-contents e)))
         (cond
+         ;; interpret quote block as actual text
          ((eq type 'fixed-width)
           (setq desc (concat desc (org-element-property :value e))))
 
@@ -454,7 +455,8 @@ Return ELEM if it was added, nil otherwise."
               (and (eq type 'paragraph)
                    (string-match "^ *DEADLINE: " (car content))))
           nil)
-         
+
+         ;; else, interpret via org-element
          (t
           (setq desc (concat desc (org-element-interpret-data e)))))))
 
@@ -753,18 +755,38 @@ sync again.\n\n")
   "Update buglists in current buffer."
   (interactive)
   (ignore-errors (kill-buffer os-conflict-buffer))
+
+  ;; parse the buffer and find the buglist-looking headlines
   (let* ((local-doc (org-element-parse-buffer))
          (local-headlines (os-find-buglists local-doc)))
 
+    ;; for each of these headlines, convert it to buglist
     (dolist (headline local-headlines)
       (let* ((local (os-headline-to-buglist headline))
              (url (os-get-prop :url local)))
 
+        ;; if it has several bug with the same id, stop
         (when (os-buglist-dups local)
           (error
            "Buglist \"%s\" contains unmerged bugs."
            (os-get-prop :title local)))
 
+        ;; local          cache          remote
+        ;;    \          /    \          /
+        ;;    parse    load   load     fetch
+        ;;      \      /        \      /
+        ;;     local-diff       remote-diff
+        ;;             \        /
+        ;;              \      /
+        ;;             merged-diff --------send-------->
+        ;;                                              (...)
+        ;;              remote   <--recv-updated-diff---
+        ;;                 v
+        ;;              merged
+        ;;                 v
+        ;;        new cache/local/remote
+
+        ;; handle buglist with the approriate backend
         (os-with-backend url
           (let* ((cache (os-get-cache os-base-url))
                  (last-fetch (os-get-prop :date-cache cache))
@@ -786,18 +808,14 @@ sync again.\n\n")
             (setq merged-diff (os-merge-diff local-diff remote-diff))
             (setq merged (os-update-buglist remote merged-diff))
 
-            ;; (pp merged-diff)
-            ;; (pp (let* ((bugs (os-get-prop :bugs merged-diff))
-            ;;            (a (nth 0 bugs))
-            ;;            (b (nth 1 bugs)))
-            ;;       (os-bug-diff a b)))
-
+            ;; if merged-diff has duplicate bugs, there's a conflict
             (let ((dups (os-buglist-dups merged-diff)))
               (if dups
                   (progn
                     (message "Synchronization failed, manual merge needed.")
                     (os-show-conflict merged-diff os-base-url))
 
+                ;; else update buffer and cache
                 (setq merged
                       (os-remove-unidentified-bug
                        (os-update-buglist merged (os--send-buglist merged-diff))))

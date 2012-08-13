@@ -391,7 +391,7 @@ Return ELEM if it was added, nil otherwise."
          nil
          (property-drawer
           (:properties ,prop-alist))
-         (paragraph nil ,(os-get-prop :desc b)))))))
+         (fixed-width (:value ,(os-get-prop :desc b))))))))
 
 (defun os-headline-url (e)
   "Returns the url of the buglist in headline E."
@@ -438,17 +438,25 @@ Return ELEM if it was added, nil otherwise."
                             (car (org-element-contents h))))))
          (ctime (os-parse-date (cdr (assoc "date-creation" headline-alist))))
          (mtime (os-parse-date (cdr (assoc "date-modification" headline-alist))))
-         (desc (org-element-interpret-data
-                (remove-if
-                 (lambda (e)
-                   (let ((type (org-element-type e))
-                         (content (org-element-contents e)))
-                     (or (eq type 'property-drawer)
-                         (and (eq type 'paragraph)
-                              (string-match "^ *DEADLINE: " (car content))))))
-                 section)))
-
+         desc
          bug)
+
+    (dolist (e section)
+      (let ((type (org-element-type e))
+            (content (org-element-contents e)))
+        (cond
+         ((eq type 'fixed-width)
+          (setq desc (concat desc (org-element-property :value e))))
+
+         ;; ignore these
+         ((or (eq type 'property-drawer)
+              (eq type 'planning)
+              (and (eq type 'paragraph)
+                   (string-match "^ *DEADLINE: " (car content))))
+          nil)
+         
+         (t
+          (setq desc (concat desc (org-element-interpret-data e)))))))
 
     ;; deadlines can be either on the same line as the headline or
     ;; on the next one.  org-element doesn't parse it the same way

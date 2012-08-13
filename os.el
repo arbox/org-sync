@@ -821,5 +821,5 @@ to import otherwise synchronize the buffer."
         (os-sync)
       (call-interactively 'os-import))))
 
-(provide 'org-sync)
+(provide 'os)
 ;;; os.el ends here

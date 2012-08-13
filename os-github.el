@@ -35,7 +35,7 @@
 
 (eval-when-compile (require 'cl))
 (require 'url)
-(require 'org-sync)
+(require 'os)
 (require 'json)
 
 (defvar os-github-backend

@@ -30,7 +30,7 @@
 ;;; Code:
 
 (eval-when-compile (require 'cl))
-(require 'org-sync)
+(require 'os)
 (require 'json)
 (require 'url)
 

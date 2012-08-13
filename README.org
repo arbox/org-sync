@@ -64,7 +64,7 @@ the header in =os.el= or one of the existing backend.
 
 ;; now, in its own file os-demo.el:
 
-(require 'org-sync)
+(require 'os)
 
 ;; this is the variable used in os-backend-alist
 (defvar os-demo-backend

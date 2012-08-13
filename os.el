@@ -217,15 +217,33 @@ assigned to os-backend."
     (cdr (assoc url os-cache-alist)))
 
 (defun os-write-cache ()
+  "Write Org-sync cache to `os-cache-file'."
   (with-temp-file os-cache-file
     (prin1 `(setq os-cache-alist ',os-cache-alist) (current-buffer))))
 
 (defun os-load-cache ()
+  "Load Org-sync cache from `os-cache-file'."
   (load os-cache-file 'noerror nil))
+
+(defun os-plist-to-alist (plist)
+  "Return PLIST as an association list."
+  (let* (alist cell q (p plist))
+    (while p
+      (setq cell (cons (car p) (cadr p)))
+      (if alist
+          (progn
+            (setcdr q (cons cell nil))
+            (setq q (cdr q)))
+        (setq alist (cons cell nil))
+        (setq q alist))
+      (setq p (cddr p)))
+    alist))
 
 (defun os-propertize (sym)
   "Return sym as a property i.e. prefixed with :."
-  (intern (concat ":" (symbol-name sym))))
+  (intern (concat ":" (if (symbolp sym)
+                          (symbol-name sym)
+                        sym))))
 
 (defun os-get-prop (key b)
   "Return value of the property KEY in buglist or bug B."
@@ -331,16 +349,29 @@ Return ELEM if it was added, nil otherwise."
 
 (defun os-buglist-to-element (bl)
   "Return buglist BL as an element."
-  (let* ((sorted (sort (os-get-prop :bugs bl) 'os-bug-sort))
+  (let* ((skip '(:title :bugs :date-cache))
+         (sorted (sort (os-get-prop :bugs bl) 'os-bug-sort))
          (elist (delq nil (mapcar 'os-bug-to-element sorted)))
          (title (os-get-prop :title bl))
-         (url (os-get-prop :url bl)))
+         (url (os-get-prop :url bl))
+         (props (sort (mapcar
+                       ;; stringify prop name
+                       (lambda (x)
+                         (cons (substring (symbol-name (car x)) 1) (cdr x)))
+                       ;; remove skipped prop
+                       (remove-if (lambda (x)
+                                    (memq (car x) skip))
+                                  (os-plist-to-alist bl)))
+                      ;; sort prop by key
+                      (lambda (a b)
+                        (string< (car a) (car b))))))
+
     (os-set-prop :bugs sorted bl)
     `(headline
       (:level 1 :title (,title))
       (section
        nil
-       (property-drawer (:properties (("url" . ,url)))))
+       (property-drawer (:properties ,props)))
       ,@elist)))
 
 (defun os-filter-list (list minus)
@@ -409,18 +440,30 @@ Return ELEM if it was added, nil otherwise."
 
 (defun os-headline-to-buglist (h)
   "Return headline H as a buglist."
-  (let* ((alist (org-element-property
+  (let* ((skip '(:url))
+         (alist (org-element-property
                  :properties
                  (car (org-element-contents
                        (car (org-element-contents h))))))
          (title (car (org-element-property :title h)))
-         (url (cdr (assoc "url" alist))))
-    `(:title ,title
-             :url ,url
-             :bugs ,(mapcar
-                     'os-headline-to-bug
-                     (nthcdr 1 (org-element-contents (car (org-element-contents h))))))))
+         (url (cdr (assoc "url" alist)))
+         (bugs (mapcar
+                'os-headline-to-bug
+                (nthcdr 1 (org-element-contents
+                           (car (org-element-contents h))))))
+         (bl `(:title ,title
+                      :url ,url
+                      :bugs ,bugs)))
 
+    ;; add all other properties
+    (mapc (lambda (x)
+            (let ((k (os-propertize (car x)))
+                  (v (cdr x)))
+              (unless (memq k skip)
+                (os-set-prop k v bl))))
+          alist)
+
+    bl))
 
 (defun os-headline-to-bug (h)
   "Return headline H as a bug."
@@ -477,7 +520,7 @@ Return ELEM if it was added, nil otherwise."
 
     ;; add all properties
     (mapc (lambda (x)
-            (let ((k (intern (concat ":" (car x))))
+            (let ((k (os-propertize (car x)))
                   (v (when (and (cdr x) (not (equal (cdr x) "")))
                        (read (cdr x)))))
               (unless (memq k skip)
@@ -806,7 +849,7 @@ sync again.\n\n")
 
             (setq remote-diff (os-buglist-diff cache remote))
             (setq merged-diff (os-merge-diff local-diff remote-diff))
-            (setq merged (os-update-buglist remote merged-diff))
+            (setq merged (os-update-buglist local merged-diff))
 
             ;; if merged-diff has duplicate bugs, there's a conflict
             (let ((dups (os-buglist-dups merged-diff)))

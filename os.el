@@ -168,6 +168,9 @@ Maps URLs to buglist cache.")
 (defvar os-conflict-buffer "*Org-sync conflict*"
   "Name of the conflict buffer")
 
+(defvar os-sync-props nil
+  "List of property to sync or nil to sync everything.")
+
 (defun os-action-fun (action)
   "Return current backend ACTION function or nil."
   (unless (or (null action) (null os-backend))
@@ -738,13 +741,23 @@ with :sync conflict-local or conflict-remote."
     `(:bugs ,merge)))
 
 (defun os-update-buglist (base diff)
-  "Apply buglist DIFF to buglist BASE and return the result."
+  "Apply buglist DIFF to buglist BASE and return the result.
+This is done according to `os-sync-props'."
   (let ((added (make-hash-table))
         new)
     (dolist (bug (os-get-prop :bugs base))
       (let* ((id (os-get-prop :id bug))
              (diff-bug (os-get-bug-id diff id))
-             (new-bug (or diff-bug bug)))
+             new-bug)
+
+        (if (and os-sync-props diff-bug)
+            (progn
+              (setq new-bug bug)
+              (mapc (lambda (p)
+                      (os-set-prop p (os-get-prop p diff-bug) new-bug))
+                    os-sync-props))
+          (setq new-bug (or diff-bug bug)))
+
         (push new-bug new)
         (puthash id t added)))
 
@@ -794,6 +807,28 @@ sync again.\n\n")
     (dolist (k keys p)
       (setq p (cdr (assoc k p))))))
 
+(defun os-filter-bug (bug)
+  "Filter BUG according to `os-sync-props'."
+  (if os-sync-props
+      (let ((new-bug `(:id ,(os-get-prop :id bug))))
+        (mapc (lambda (x)
+                (os-set-prop x (os-get-prop x bug) new-bug))
+              os-sync-props)
+        new-bug)
+    bug))
+
+(defun os-filter-diff (diff)
+  "Filter DIFF according to `os-sync-props'."
+  (when os-sync-props
+    (let (final)
+      (dolist (b (os-get-prop :bugs diff))
+        (let ((id (os-get-prop :id b)))
+          ;; drop new bugs
+          (when id
+            (push (os-filter-bug b) final))))
+      (os-set-prop :bugs final diff)))
+  diff)
+
 (defun os-sync ()
   "Update buglists in current buffer."
   (interactive)
@@ -823,7 +858,7 @@ sync again.\n\n")
         ;;              \      /
         ;;             merged-diff --------send-------->
         ;;                                              (...)
-        ;;              remote   <--recv-updated-diff---
+        ;;               local   <--recv-updated-diff---
         ;;                 v
         ;;              merged
         ;;                 v
@@ -849,6 +884,10 @@ sync again.\n\n")
 
             (setq remote-diff (os-buglist-diff cache remote))
             (setq merged-diff (os-merge-diff local-diff remote-diff))
+
+            ;; filter according to os-sync-props
+            (os-filter-diff merged-diff)
+
             (setq merged (os-update-buglist local merged-diff))
 
             ;; if merged-diff has duplicate bugs, there's a conflict

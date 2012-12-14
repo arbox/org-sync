@@ -374,7 +374,7 @@ Return ELEM if it was added, nil otherwise."
       (:level 1 :title (,title))
       (section
        nil
-       (property-drawer (:properties ,props)))
+       ,(os-alist-to-property-drawer props))
       ,@elist)))
 
 (defun os-filter-list (list minus)
@@ -423,15 +423,13 @@ Return ELEM if it was added, nil otherwise."
                 :todo-keyword ,(upcase (symbol-name (os-get-prop :status b))))
         (section
          nil
-         (property-drawer
-          (:properties ,prop-alist))
+         ,(os-alist-to-property-drawer prop-alist)
          (fixed-width (:value ,(os-get-prop :desc b))))))))
 
 (defun os-headline-url (e)
   "Returns the url of the buglist in headline E."
   (cdr (assoc "url"
-              (org-element-property
-               :properties
+              (os-property-drawer-to-alist
                (car (org-element-contents
                      (car (org-element-contents e))))))))
 
@@ -441,11 +439,25 @@ Return ELEM if it was added, nil otherwise."
    (eq (org-element-type elem) 'headline)
    (stringp (os-headline-url elem))))
 
+(defun os-property-drawer-to-alist (drawer)
+  "Return the alist of all key value pairs"
+  (org-element-map drawer
+                   'node-property
+                   (lambda (x) (cons (org-element-property :key x)
+                                (org-element-property :value x)))))
+
+(defun os-alist-to-property-drawer (alist)
+  "Return the property drawer corresponding to an alist of key
+  value pairs"
+  `(property-drawer nil
+                    ,(mapcar
+                      (lambda (x) `(node-property (:key ,(car x) :value ,(cdr x))))
+                      alist)))
+
 (defun os-headline-to-buglist (h)
   "Return headline H as a buglist."
   (let* ((skip '(:url))
-         (alist (org-element-property
-                 :properties
+         (alist (os-property-drawer-to-alist
                  (car (org-element-contents
                        (car (org-element-contents h))))))
          (title (car (org-element-property :title h)))
@@ -477,8 +489,7 @@ Return ELEM if it was added, nil otherwise."
          (dtime (os-parse-date (org-element-property :deadline h)))
          (title (car (org-element-property :title h)))
          (section (org-element-contents (car (org-element-contents h))))
-         (headline-alist (org-element-property
-                          :properties
+         (headline-alist (os-property-drawer-to-alist
                           (car
                            (org-element-contents
                             (car (org-element-contents h))))))

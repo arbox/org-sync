@@ -88,11 +88,15 @@ Append new tags in EXISTING-TAGS by side effects."
       (when (os-append! tag existing-tags)
         (os-github-create-label tag)))))
 
+(defun os-github-time-to-string (time)
+  "Return TIME as a full ISO 8601 date string, but without timezone adjustments (which github doesn't support"
+  (format-time-string "%Y-%m-%dT%TZ" time t))
+
 ;; override
 (defun os-github-fetch-buglist (last-update)
   "Return the buglist at os-base-url."
   (let* ((since (when last-update
-                  (format "&since=%s" (os-time-to-string last-update))))
+                  (format "&since=%s" (os-github-time-to-string last-update))))
          (url (concat os-base-url "/issues?per_page=100" since))
          (json (vconcat (os-github-fetch-json url)
                         (os-github-fetch-json (concat url "&state=closed"))))
@@ -155,9 +159,23 @@ Append new tags in EXISTING-TAGS by side effects."
 
     json))
 
+(defun os-github-url-retrieve-synchronously (url)
+  "Retrieve the specified url using authentication data from
+os-github-auth. AUTH is a cons (\"user\" . \"pwd\")."
+  (let ((auth os-github-auth))
+    (if (consp auth)
+        ;; dynamically bind auth related vars
+        (let* ((str (concat (car auth) ":" (cdr auth)))
+               (encoded (base64-encode-string str))
+               (login `(("api.github.com:443" ("Github API" . ,encoded))))
+               (url-basic-auth-storage 'login))
+          (url-retrieve-synchronously url))
+      ;; nothing more to bind
+      (url-retrieve-synchronously url))))
+
 (defun os-github-fetch-json-page (url)
   "Return a cons (JSON object from URL . next page url)."
-  (let ((download-buffer (url-retrieve-synchronously url))
+  (let ((download-buffer (os-github-url-retrieve-synchronously url))
         page-next
         header-end
         ret)
@@ -183,23 +201,12 @@ Append new tags in EXISTING-TAGS by side effects."
 
 (defun os-github-request (method url &optional data)
   "Send HTTP request at URL using METHOD with DATA.
-AUTH is a cons (\"user\" . \"pwd\").  Return the server decoded
-JSON response."
+Return the server decoded JSON response."
   (message "%s %s %s" method url (prin1-to-string data))
   (let* ((url-request-method method)
          (url-request-data data)
-         (auth os-github-auth)
-         (buf))
+         (buf (os-github-url-retrieve-synchronously url)))
 
-    (if (consp auth)
-        ;; dynamically bind auth related vars
-        (let* ((str (concat (car auth) ":" (cdr auth)))
-               (encoded (base64-encode-string str))
-               (login `(("api.github.com:443" ("Github API" . ,encoded))))
-               (url-basic-auth-storage 'login))
-          (setq buf (url-retrieve-synchronously url)))
-      ;; nothing more to bind
-      (setq buf (url-retrieve-synchronously url)))
     (with-current-buffer buf
       (goto-char url-http-end-of-headers)
       (prog1 (json-read) (kill-buffer)))))

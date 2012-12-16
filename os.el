@@ -464,8 +464,7 @@ Return ELEM if it was added, nil otherwise."
          (url (cdr (assoc "url" alist)))
          (bugs (mapcar
                 'os-headline-to-bug
-                (nthcdr 1 (org-element-contents
-                           (car (org-element-contents h))))))
+                (nthcdr 1 (org-element-contents h))))
          (bl `(:title ,title
                       :url ,url
                       :bugs ,bugs)))

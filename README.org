@@ -14,12 +14,12 @@ backend you need. You can add this to your .emacs:
       '("org-element" "os" "os-bb" "os-github" "os-rmine"))
 #+end_src
 
-Make sure you have =org-element.el= (it's in the contrib directory of
-org-mode). If you don't have it you can download a recent version in the
-org-sync directory:
+Make sure you have =org-element.el= (it's part of recent org-mode). If
+you don't have it you can download a recent version in the org-sync
+directory:
 
 #+begin_src sh
-wget -O org-element.el 'http://orgmode.org/w/?p=org-mode.git;a=blob_plain;f=contrib/lisp/org-element.el;hb=5057ae0fc2c0d551a83d3c3e9bd621b751db9f09'
+wget -O org-element.el 'http://orgmode.org/w/?p=org-mode.git;a=blob_plain;f=lisp/org-element.el;hb=b60445cfd44bf800f0c338cbf9795ceb2767a06d'
 #+end_src
 
 * Tutorial

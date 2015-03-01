@@ -1,52 +1,54 @@
-* Introduction
+# Org-sync: Synchronize Org-mode Files with Bug Tracking systems
 
-Org-sync is a tool to synchronize online bugtrackers with org
-documents.
+Org-sync is a tool to synchronize online bugtrackers with org documents.
+It is made for relatively small/medium projects: I find Org documents are not
+really suited for handling large bug lists. The official homepage of the project
+is http://orgmode.org/worg/org-contrib/gsoc2012/student-projects/org-sync/
+on Worg. You can find the official git repo and contact informations there.
 
-* Installation
+## Installation
 
-Put the org-sync directory in your load-path and load the org-sync
-backend you need. You can add this to your .emacs:
+Put the org-sync directory in your load-path and load the org-sync backend you
+need. You can add this to your .emacs:
 
-#+begin_src emacs-lisp
+``` emacs-lisp
 (add-to-list 'load-path "path/to/org-sync")
 (mapc 'load
-      '("org-element" "os" "os-bb" "os-github" "os-rmine"))
-#+end_src
+      '("os" "os-bb" "os-github" "os-rmine"))
+```
 
-Make sure you have =org-element.el= (it's part of recent org-mode). If
-you don't have it you can download a recent version in the org-sync
-directory:
+Make sure you have `org-element.el` (it's part of recent org-mode >=). If you
+don't have it you can download a recent version in the org-sync directory:
 
-#+begin_src sh
-wget -O org-element.el 'http://orgmode.org/w/?p=org-mode.git;a=blob_plain;f=lisp/org-element.el;hb=b60445cfd44bf800f0c338cbf9795ceb2767a06d'
-#+end_src
+``` sh
+wget -O org-element.el 'http://orgmode.org/w/?p=org-mode.git;a=blob_plain;f=lisp/org-element.el'
+```
 
-* Tutorial
+## Tutorial
 
-Next, open a new org-mode buffer and run =M-x os-import=.  It prompts
-you for an URL.  You can try my github test repo:
-github.com/ostesting/test.  Org-sync should import the issues from the
-repo.
+Next, open a new org-mode buffer and run `M-x os-import`.  It prompts you for
+an URL.  You can try my Github test repo: `github.com/arbox/org-sync-test`.
+Org-sync should import the issues from the repo. *Note*: This is just
+a test repo, do not use it to report actual bugs.
 
 Now, let's try to add a new issue.  First you have to set a
 user/password to be able to modify the issue remotely.
 
 Set the variable os-github-auth to like so:
-=(setq os-github-auth '("ostesting" . "thisisostesting42"))=
+`(setq os-github-auth '("ostesting" . "thisisostesting42"))`
 
-Try to add another issue e.g. insert =** OPEN my test issue=.  You can
+Try to add another issue e.g. insert `** OPEN my test issue`.  You can
 type a description under it if you want.
 
-The next step is simple, just run =M-x os-sync=.  It synchronize all
+The next step is simple, just run `M-x os-sync`.  It synchronize all
 the buglists in the document.
 
-* How to write a new backend
+## How to write a new backend
 
 Writing a new backend is easy.  If something is not clear, try to read
-the header in =os.el= or one of the existing backend.
+the header in `os.el` or one of the existing backend.
 
-#+begin_src emacs-lisp
+``` emacs-lisp
 ;; backend symbol/name: demo
 ;; the symbol is used to find and call your backend functions (for now)
 
@@ -127,16 +129,15 @@ the header in =os.el= or one of the existing backend.
   ;; we return the same thing for the demo.
   ;; :bugs is the only property used from this function in os.el
   `(:bugs ((:id 1 :title "Foo" :status open :desc "bar."))))
-#+end_src
+```
 
-That's it.  A bug has to have at least an id, title and status
-properties.  Other recognized but optionnal properties are
-=:date-deadline=, =:date-creation=, =:date-modification=, =:desc=.
-Any other properties are automatically added in the =PROPERTIES= block
-of the bug via =prin1-to-string= and are =read= back by org-sync.  All
-the dates are regular emacs time object.  For more details you can
-look at the github backend in =os-github.el=.
+That's it.  A bug has to have at least an id, title and status properties.
+Other recognized but optionnal properties are `:date-deadline`,
+`:date-creation`, `:date-modification`, `:desc`. Any other properties are
+automatically added in the `PROPERTIES` block of the bug via `prin1-to-string`
+and are `read` back by org-sync.  All the dates are regular emacs time object.
+For more details you can look at the github backend in `os-github.el`.
 
-* More information
+## More information
 
-You can find more in the =os.el= commentary headers.
+You can find more in the `os.el` commentary headers.

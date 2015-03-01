@@ -1,3 +1,5 @@
+[![License GPL 3][badge-license]](http://www.gnu.org/licenses/gpl-3.0.txt)
+
 # Org-sync: Synchronize Org-mode Files with Bug Tracking systems
 
 Org-sync is a tool to synchronize online bugtrackers with org documents.
@@ -141,3 +143,5 @@ For more details you can look at the github backend in `os-github.el`.
 ## More information
 
 You can find more in the `os.el` commentary headers.
+
+[badge-license]: https://img.shields.io/badge/license-GPL_3-green.svg

@@ -1,4 +1,6 @@
 [![License GPL 3][badge-license]](http://www.gnu.org/licenses/gpl-3.0.txt)
+[![MELPA](http://melpa.org/packages/org-sync-badge.svg)](http://melpa.org/#/org-sync)
+[![MELPA Stable](http://stable.melpa.org/packages/org-sync-badge.svg)](http://stable.melpa.org/#/org-sync)
 
 # Org-sync: Synchronize Org-mode Files with Bug Tracking systems
 

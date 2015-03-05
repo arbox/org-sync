@@ -132,7 +132,7 @@ characters with some optional PREFIX."
 
 (defun omd-write-to-file (elem file)
   (with-temp-file file
-    (insert (omd-to-string string))))
+    (insert (omd-to-string elem))))
 
 (defun omd-random-insert (elem list)
   "Insert ELEM in LIST at a random position."

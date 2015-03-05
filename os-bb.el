@@ -73,7 +73,7 @@ decoded response in JSON."
       (setq buf (url-retrieve-synchronously url)))
     (with-current-buffer buf
       (goto-char url-http-end-of-headers)
-      (prog1 
+      (prog1
           (cons url-http-response-status (ignore-errors (json-read)))
         (kill-buffer)))))
 
@@ -257,4 +257,6 @@ decoded response in JSON."
             (error "Can't update bug #%id" id))
           (push (os-bb-json-to-bug (cdr res)) new-bugs)))))
     `(:bugs ,new-bugs)))
+
+(provide 'os-bb)
 ;;; os-bb.el ends here

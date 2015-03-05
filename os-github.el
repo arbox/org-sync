@@ -224,7 +224,7 @@ Return the server decoded JSON response."
              (setq desc (replace-regexp-in-string "\r\n" "\n" desc))
              (setq desc (replace-regexp-in-string "\\([^ \t\n]\\)[ \t\n]*\\'"
                                                   "\\1\n" desc)))))
-  
+
 (defun os-github-json-to-bug (data)
   "Return DATA (in json) converted to a bug."
   (flet ((va (key alist) (cdr (assoc key alist)))
@@ -268,4 +268,5 @@ Return the server decoded JSON response."
      (state . ,(symbol-name (os-get-prop :status bug)))
      (labels . [ ,@(os-get-prop :tags bug) ])))))
 
+(provide 'os-github)
 ;;; os-github.el ends here

@@ -173,4 +173,6 @@
                   param ""))
 
       nil nil 'utf-8))))
+
+(provide 'os-rtm)
 ;;; os-rtm.el ends here

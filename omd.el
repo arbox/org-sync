@@ -1,5 +1,6 @@
 ;; omd.el --- org-merge-driver document generator
-
+;;; Commentary:
+;;; Code:
 (defconst omd-bullet-type '("+" "-" "num"))
 
 (defun omd-rand (min max)
@@ -10,7 +11,7 @@
     (+ min (random d))))
 
 (defun omd-random-word (&optional length)
-  "Return random word."
+  "Return random word.of length LENGTH."
   (unless length
     (setq length (omd-rand 2 7)))
 
@@ -22,7 +23,7 @@
 (defun omd-random-text (&optional lines length prefix)
   "Return random text.
 The text has LINES lines and each line is approximately LENGTH
-characters."
+characters with some optional PREFIX."
   (unless prefix
     (setq prefix ""))
   (unless length
@@ -207,3 +208,6 @@ characters."
        (omd-to-string doc-a)
        "\n\n"
        (omd-to-string doc-b)))))
+
+(provide 'omd)
+;;; omd.el ends here

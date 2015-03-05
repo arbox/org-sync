@@ -218,4 +218,6 @@ decoded response in JSON."
                    (cdr (assoc 'issue (cdr res))))
                   new-bugs)))))
       `(:bugs ,new-bugs)))
+
+(provide 'os-rmine)
 ;;; os-rmine.el ends here

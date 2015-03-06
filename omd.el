@@ -2,6 +2,7 @@
 ;;; Commentary:
 ;;; Code:
 
+(require 'cl-lib)
 (require 'cookie1)
 
 ;; for < Emacs 24.4
@@ -13,7 +14,7 @@
 (defun omd-rand (min max)
   "Return random integer in [MIN;MAX[."
   (if (< max min)
-      (rotatef min max))
+      (cl-rotatef min max))
   (let ((d (- max min)))
     (+ min (random d))))
 
@@ -122,7 +123,7 @@ characters with some optional PREFIX."
             (bullet (omd-get-prop :bullet elem)))
         (apply 'concat
               (mapcar (lambda (item)
-                        (incf n)
+                        (cl-incf n)
                         (let* ((prefix (if (string= "num" bullet)
                                            (format "%d. " n)
                                          (concat bullet " ")))
@@ -176,9 +177,9 @@ characters with some optional PREFIX."
   "Shuffle the order of the contents of ELEM."
   (when (listp elem)
     (let ((cont
-           (map 'list 'identity
-                (cookie-shuffle-vector
-                 (map 'vector 'identity (omd-get-contents elem))))))
+           (cl-map 'list 'identity
+                   (cookie-shuffle-vector
+                    (cl-map 'vector 'identity (omd-get-contents elem))))))
       (omd-set-contents elem cont)
       (when recurse
         (dolist (e cont)
@@ -203,7 +204,7 @@ characters with some optional PREFIX."
 
     ;; doc B adds a new subheadline with a list
     (omd-add-contents
-     (second (omd-get-contents doc-b))
+     (cl-second (omd-get-contents doc-b))
      (omd-random-headline
       (omd-random-list)))
 

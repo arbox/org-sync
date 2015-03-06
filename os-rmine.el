@@ -29,7 +29,7 @@
 
 ;;; Code:
 
-(eval-when-compile (require 'cl))
+(require 'cl-lib)
 (require 'os)
 (require 'url)
 (require 'json)
@@ -127,8 +127,8 @@ decoded response in JSON."
 
 (defun os-rmine-json-to-bug (json)
   "Return JSON as a bug."
-  (flet ((va (key alist) (cdr (assoc key alist)))
-         (v (key) (va key json)))
+  (cl-flet* ((va (key alist) (cdr (assoc key alist)))
+             (v (key) (va key json)))
     (let* ((id (v 'id))
            (author (va 'name (v 'author)))
            (txtstatus (va 'name (v 'status)))

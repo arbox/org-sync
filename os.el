@@ -5,6 +5,8 @@
 ;; Author: Aurelien Aptel <aurelien dot aptel at gmail dot com>
 ;; Keywords: org, synchronization
 ;; Homepage: http://orgmode.org/worg/org-contrib/gsoc2012/student-projects/org-sync
+;; Package-Requires: ((cl-lib "0.5"))
+
 ;;
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -141,7 +143,7 @@
 ;; string is then inserted in the buffer.  See `os-buglist-to-element'
 ;; and `os-bug-to-element'.
 
-(eval-when-compile (require 'cl))
+(require 'cl-lib)
 (require 'org)
 (require 'org-element)
 
@@ -193,8 +195,8 @@ os-base-url.
 Else BACKEND should be a backend symbol.  It is
 assigned to os-backend."
   (declare (indent 1) (debug t))
-  (let ((res (gensym))
-        (url (gensym)))
+  (let ((res (cl-gensym))
+        (url (cl-gensym)))
 
     `(let* ((,res ,backend)
             (,url))
@@ -336,10 +338,10 @@ Return ELEM if it was added, nil otherwise."
 ;; OPEN bugs sorted by mod time then CLOSED bugs sorted by mod time
 (defun os-bug-sort (a b)
   "Return non-nil if bug A should appear before bug B."
-  (flet ((time-less-safe (a b)
-                         (if (and a b)
-                             (time-less-p a b)
-                           (or a b))))
+  (cl-flet ((time-less-safe (a b)
+                            (if (and a b)
+                                (time-less-p a b)
+                              (or a b))))
     (let* ((ao (eq 'open (os-get-prop :status a)))
            (bc (not (eq 'open (os-get-prop :status b))))
            (am (time-less-safe
@@ -362,9 +364,9 @@ Return ELEM if it was added, nil otherwise."
                        (lambda (x)
                          (cons (substring (symbol-name (car x)) 1) (cdr x)))
                        ;; remove skipped prop
-                       (remove-if (lambda (x)
-                                    (memq (car x) skip))
-                                  (os-plist-to-alist bl)))
+                       (cl-remove-if (lambda (x)
+                                       (memq (car x) skip))
+                                     (os-plist-to-alist bl)))
                       ;; sort prop by key
                       (lambda (a b)
                         (string< (car a) (car b))))))
@@ -379,7 +381,7 @@ Return ELEM if it was added, nil otherwise."
 
 (defun os-filter-list (list minus)
   "Return a copy of LIST without elements in MINUS."
-  (let ((final (copy-seq list)))
+  (let ((final (cl-copy-seq list)))
     (mapc (lambda (x)
             (delq x final)) minus)
     final))
@@ -393,10 +395,10 @@ Return ELEM if it was added, nil otherwise."
          (dtime (os-get-prop :date-deadline b))
          (ctime (os-get-prop :date-creation b))
          (mtime (os-get-prop :date-modification b))
-         (prop-alist (loop for (a b) on b by #'cddr
-                           if (and b (not (memq a skip)))
-                           collect (cons (substring (symbol-name a) 1)
-                                         (prin1-to-string b)))))
+         (prop-alist (cl-loop for (a b) on b by #'cddr
+                              if (and b (not (memq a skip)))
+                              collect (cons (substring (symbol-name a) 1)
+                                            (prin1-to-string b)))))
     (unless (os-get-prop :delete b)
       ;; add date-xxx props manually in a human readable way.
       (push (cons
@@ -565,7 +567,7 @@ Return ELEM if it was added, nil otherwise."
   "Add KEY:VAL as a header in TREE by side-effects and return TREE.
 If KEY is already equal to VAL, no change is made."
   (catch :exit
-    (let* ((section (first (org-element-contents tree))))
+    (let* ((section (cl-first (org-element-contents tree))))
       (when (and (eq 'org-data (org-element-type tree))
                  (eq 'section  (org-element-type section)))
 
@@ -648,17 +650,17 @@ The value returned is a list of duplicated ids."
 
 (defun os-time-max (&rest timelist)
   "Return the largest time in TIMELIST."
-  (reduce (lambda (a b)
-            (if (and a b)
-                (if (time-less-p a b) b a))
-            (or a b))
-          timelist))
+  (cl-reduce (lambda (a b)
+               (if (and a b)
+                   (if (time-less-p a b) b a))
+               (or a b))
+             timelist))
 
 (defun os-buglist-last-update (buglist)
   "Return the most recent creation/modi date in BUGLIST."
-  (apply 'os-time-max (loop for x in (os-get-prop :bugs buglist)
-                            collect (os-get-prop :date-creation x) and
-                            collect (os-get-prop :date-modification x))))
+  (apply 'os-time-max (cl-loop for x in (os-get-prop :bugs buglist)
+                               collect (os-get-prop :date-creation x) and
+                               collect (os-get-prop :date-modification x))))
 
 (defun os-set-equal (a b)
   "Return t if list A and B have the same elements, no matter the order."
@@ -688,8 +690,8 @@ The form of the alist is ((:property . (valueA valueB)...)"
   (let ((diff)
         (props-list
          (append
-          (loop for (akey aval) on a by #'cddr collect akey)
-          (loop for (bkey bval) on b by #'cddr collect bkey))))
+          (cl-loop for (akey aval) on a by #'cddr collect akey)
+          (cl-loop for (bkey bval) on b by #'cddr collect bkey))))
     (delete-dups props-list)
     (dolist (key props-list diff)
       (let ((va (os-get-prop key a))
@@ -776,7 +778,7 @@ This is done according to `os-sync-props'."
         (when (or (null id) (null (gethash id added)))
           (push bug new))))
 
-    (let ((new-buglist (copy-list base)))
+    (let ((new-buglist (cl-copy-list base)))
       (os-set-prop :bugs new new-buglist)
       new-buglist)))
 

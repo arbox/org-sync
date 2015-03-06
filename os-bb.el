@@ -149,14 +149,14 @@ decoded response in JSON."
     (if (and kind (not (member kind os-bb-kind-list)))
       (error "Invalid kind \"%s\" at bug \"%s\"." kind title))
 
-    (remove-if (lambda (x)
-                 (null (cdr x)))
-               `(("title"       . ,title)
-                 ("status"      . ,status)
-                 ("content"     . ,desc)
-                 ("responsible" . ,assignee)
-                 ("priority"    . ,priority)
-                 ("kind"        . ,kind)))))
+    (cl-remove-if (lambda (x)
+                    (null (cdr x)))
+                  `(("title"       . ,title)
+                    ("status"      . ,status)
+                    ("content"     . ,desc)
+                    ("responsible" . ,assignee)
+                    ("priority"    . ,priority)
+                    ("kind"        . ,kind)))))
 
 (defun os-bb-post-encode (args)
   "Return form alist ARGS as a url-encoded string."
@@ -192,8 +192,8 @@ decoded response in JSON."
 
 (defun os-bb-json-to-bug (json)
   "Return JSON as a bug."
-  (flet ((va (key alist) (cdr (assoc key alist)))
-         (v (key) (va key json)))
+  (cl-flet* ((va (key alist) (cdr (assoc key alist)))
+             (v (key) (va key json)))
     (let* ((id (v 'local_id))
            (metadata (v 'metadata))
            (kind (va 'kind metadata))

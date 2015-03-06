@@ -1,6 +1,13 @@
 ;; omd.el --- org-merge-driver document generator
 ;;; Commentary:
 ;;; Code:
+
+(require 'cookie1)
+
+;; for < Emacs 24.4
+(unless (fboundp 'cookie-shuffle-vector)
+  (defalias 'cookie-shuffle-vector 'shuffle-vector))
+
 (defconst omd-bullet-type '("+" "-" "num"))
 
 (defun omd-rand (min max)
@@ -170,7 +177,7 @@ characters with some optional PREFIX."
   (when (listp elem)
     (let ((cont
            (map 'list 'identity
-                (shuffle-vector
+                (cookie-shuffle-vector
                  (map 'vector 'identity (omd-get-contents elem))))))
       (omd-set-contents elem cont)
       (when recurse

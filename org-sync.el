@@ -1,6 +1,7 @@
 ;;; os.el --- Synchronize Org documents with external services
 
 ;; Copyright (C) 2012  Aurelien Aptel
+;; Copyright (C) 2015-      Andrei Beliankou
 ;;
 ;; Author: Aurelien Aptel <aurelien dot aptel at gmail dot com>
 ;; Keywords: org, synchronization
@@ -941,5 +942,5 @@ to import otherwise synchronize the buffer."
         (os-sync)
       (call-interactively 'os-import))))
 
-(provide 'os)
-;;; os.el ends here
+(provide 'org-sync)
+;;; org-sync.el ends here

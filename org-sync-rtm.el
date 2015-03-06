@@ -30,7 +30,7 @@
 ;;; Code:
 
 (require 'cl-lib)
-(require 'os)
+(require 'org-sync)
 (require 'json)
 (require 'url)
 
@@ -174,5 +174,5 @@
 
       nil nil 'utf-8))))
 
-(provide 'os-rtm)
-;;; os-rtm.el ends here
+(provide 'org-sync-rtm)
+;;; org-sync-rtm.el ends here

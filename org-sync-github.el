@@ -1,4 +1,4 @@
-;;; os-github.el --- Redmine backend for org-sync.
+;;; os-github.el --- Github backend for org-sync.
 
 ;; Copyright (C) 2012  Aurelien Aptel
 ;;
@@ -35,7 +35,7 @@
 
 (require 'cl-lib)
 (require 'url)
-(require 'os)
+(require 'org-sync)
 (require 'json)
 
 (defvar os-github-backend
@@ -268,5 +268,5 @@ Return the server decoded JSON response."
      (state . ,(symbol-name (os-get-prop :status bug)))
      (labels . [ ,@(os-get-prop :tags bug) ])))))
 
-(provide 'os-github)
-;;; os-github.el ends here
+(provide 'org-sync-github)
+;;; org-sync-github.el ends here

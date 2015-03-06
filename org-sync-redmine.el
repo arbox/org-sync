@@ -30,7 +30,7 @@
 ;;; Code:
 
 (require 'cl-lib)
-(require 'os)
+(require 'org-sync)
 (require 'url)
 (require 'json)
 
@@ -219,5 +219,5 @@ decoded response in JSON."
                   new-bugs)))))
       `(:bugs ,new-bugs)))
 
-(provide 'os-rmine)
-;;; os-rmine.el ends here
+(provide 'org-sync-redmine)
+;;; org-sync-redmine.el ends here

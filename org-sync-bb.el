@@ -33,7 +33,7 @@
 ;;; Code:
 
 (eval-when-compile (require 'cl))
-(require 'os)
+(require 'org-sync)
 (require 'url)
 (require 'json)
 
@@ -258,5 +258,5 @@ decoded response in JSON."
           (push (os-bb-json-to-bug (cdr res)) new-bugs)))))
     `(:bugs ,new-bugs)))
 
-(provide 'os-bb)
-;;; os-bb.el ends here
+(provide 'org-sync-bb)
+;;; org-sync-bb.el ends here

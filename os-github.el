@@ -33,7 +33,7 @@
 
 ;;; Code:
 
-(eval-when-compile (require 'cl))
+(require 'cl-lib)
 (require 'url)
 (require 'os)
 (require 'json)
@@ -227,8 +227,8 @@ Return the server decoded JSON response."
 
 (defun os-github-json-to-bug (data)
   "Return DATA (in json) converted to a bug."
-  (flet ((va (key alist) (cdr (assoc key alist)))
-         (v (key) (va key data)))
+  (cl-flet* ((va (key alist) (cdr (assoc key alist)))
+             (v (key) (va key data)))
     (let* ((id (v 'number))
            (stat (if (string= (v 'state) "open") 'open 'closed))
            (title (v 'title))

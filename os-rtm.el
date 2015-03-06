@@ -29,7 +29,7 @@
 
 ;;; Code:
 
-(eval-when-compile (require 'cl))
+(require 'cl-lib)
 (require 'os)
 (require 'json)
 (require 'url)
@@ -80,7 +80,7 @@
 
 (defun os-rtm-task-to-bug (task)
   "Return TASK as a bug."
-  (flet ((v (&rest key) (apply 'os-getalist task key)))
+  (cl-flet ((v (&rest key) (apply 'os-getalist task key)))
     (let* ((id (string-to-number (v 'id)))
            (title (v 'name))
            (status (if (string= (v 'task 'completed) "")
@@ -136,7 +136,7 @@
   ;; http://www.rememberthemilk.com/services/auth/?api_key=abc123&perms=delete
 
   (let* ((res (os-rtm-call "rtm.auth.getFrob"))
-         (frob (cdr (assoc 'frob (cdadr res))))
+         (frob (cdr (assoc 'frob (cl-cdadr res))))
          (param `(("api_key" . ,os-rtm-api-key)
                   ("perms"   . "delete")
                   ("frob"    . ,frob)))

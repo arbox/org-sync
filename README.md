@@ -12,6 +12,14 @@ on Worg. You can find the official git repo and contact informations there.
 
 ## Installation
 
+### melpa
+
+```
+M-x package-install RET org-sync RET
+```
+
+### from source
+
 Put the org-sync directory in your load-path and load the org-sync backend you
 need. You can add this to your .emacs:
 

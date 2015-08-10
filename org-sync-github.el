@@ -100,7 +100,7 @@ Append new tags in EXISTING-TAGS by side effects."
          (url (concat org-sync-base-url "/issues?per_page=100" since))
          (json (vconcat (org-sync-github-fetch-json url)
                         (org-sync-github-fetch-json (concat url "&state=closed"))))
-         (title (concat "Bugs of " (org-sync-github-repo-name url))))
+         (title (concat "Issues of " (org-sync-github-repo-name url))))
 
     `(:title ,title
              :url ,org-sync-base-url

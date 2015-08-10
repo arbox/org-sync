@@ -183,7 +183,7 @@ decoded response in JSON."
          (res (org-sync-bb-request "GET" url))
          (code (car res))
          (json (cdr res))
-         (title (concat "Bugs of " (org-sync-bb-repo-name url))))
+         (title (concat "Issues of " (org-sync-bb-repo-name url))))
 
     `(:title ,title
              :url ,org-sync-base-url

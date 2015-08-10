@@ -4,7 +4,7 @@
 ;; Copyright (C) 2015-      Andrei Beliankou
 ;;
 ;; Author: Aurelien Aptel <aurelien dot aptel at gmail dot com>
-;; Keywords: org, synchronization
+;; Keywords: org, synchronization, issues
 ;; Homepage: http://orgmode.org/worg/org-contrib/gsoc2012/student-projects/org-sync
 ;; Package-Requires: ((cl-lib "0.5"))
 ;; Version: 0.0.1

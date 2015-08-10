@@ -27,28 +27,28 @@
 
 ;;; Commentary:
 
-;; This package implements an extension to org-mode that synchnonizes
+;; This package implements an extension to org-mode that synchronizes
 ;; org document with external services.  It provides an interface that
 ;; can be implemented in backends.  The current focus is on
 ;; bugtrackers services.
 
 ;; The entry points are `os-import', `os-sync' and `os'.  The first
-;; one prompts for a URL to import, the second one pulls, merges and
-;; pushes every buglists in the current buffer and the third one
+;; one prompts for an URL to import, the second one pulls, merges and
+;; pushes every buglist in the current buffer and the third one
 ;; combines the others in one function: if nothing in the buffer can
 ;; be synchronized, ask for an URL to import.
 
-;; The usual workflow is first to import your buglist with
+;; The usual workflow is to first import your buglist with
 ;; `os-import', modify it or add a bug and run `os-sync'.
 
 ;; A buglist is a top-level headline which has a :url: in its
 ;; PROPERTIES block.  This headline is composed of a list of
-;; subheadlines which corresponds to bugs.  The requirement for a bug
+;; subheadlines which correspond to bugs.  The requirement for a bug
 ;; is to have a state, a title and an id.  If you add a new bug, it
 ;; wont have an id but it will get one once you sync.  If you omit the
 ;; status, OPEN is chose.
 
-;; The status is an org TODO state.  It can be either OPEN or CLOSED.
+;; The status is an org TODO state.  It can either be OPEN or CLOSED.
 ;; The title is just the title of the headline.  The id is a number in
 ;; the PROPERTIES block of the headline.
 
@@ -57,7 +57,7 @@
 ;; it.
 
 ;; Paragraphs under bug-headlines are considered as their description.
-;; Additionnal data used by the backend are in the PROPERTIES block of
+;; Additional data used by the backend are in the PROPERTIES block of
 ;; the bug.
 
 ;; To add a bug, just insert a new headline under the buglist you want
@@ -98,7 +98,7 @@
 ;;   ;; ...
 ;;   )
 
-;; Some accesors are available for both structure.  See `os-set-prop',
+;; Some accessors are available for both structure.  See `os-set-prop',
 ;; and `os-get-prop'.
 
 
@@ -107,7 +107,7 @@
 ;; The backend symbol is then used to call the backend functions.
 ;; When these functions are called, the variable `os-backend' and
 ;; `os-base-url' are dynamically bound to respectively the backend
-;; symbol and the cannonical URL for the thing you are synching with.
+;; symbol and the canonical URL for the thing you are syncing with.
 
 ;; The symbol part in a `os-backend-alist' pair must be a variable
 ;; defined in the backend.  It is an alist that maps verb to function
@@ -115,7 +115,7 @@
 
 ;; * base-url (param: URL)
 
-;; Given the user URL, returns the cannonical URL to represent it.
+;; Given the user URL, returns the canonical URL to represent it.
 ;; This URL will be available dynamically to all of your backend
 ;; function through the `os-base-url' variable.
 

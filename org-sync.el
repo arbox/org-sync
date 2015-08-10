@@ -32,14 +32,14 @@
 ;; can be implemented in backends.  The current focus is on
 ;; bugtrackers services.
 
-;; The entry points are `os-import', `os-sync' and `os'.  The first
-;; one prompts for an URL to import, the second one pulls, merges and
+;; The entry points are `org-sync-import', `org-sync' and `org-sync-or-import'.
+;; The first one prompts for an URL to import, the second one pulls, merges and
 ;; pushes every buglist in the current buffer and the third one
 ;; combines the others in one function: if nothing in the buffer can
 ;; be synchronized, ask for an URL to import.
 
 ;; The usual workflow is to first import your buglist with
-;; `os-import', modify it or add a bug and run `os-sync'.
+;; `org-sync-import', modify it or add a bug and run `org-sync'.
 
 ;; A buglist is a top-level headline which has a :url: in its
 ;; PROPERTIES block.  This headline is composed of a list of
@@ -63,7 +63,7 @@
 ;; To add a bug, just insert a new headline under the buglist you want
 ;; to modify e.g.:
 ;;     ** OPEN my new bug
-;; Then simply call `os-sync'.
+;; Then simply call `org-sync'.
 
 ;;; Code:
 
@@ -98,18 +98,18 @@
 ;;   ;; ...
 ;;   )
 
-;; Some accessors are available for both structure.  See `os-set-prop',
-;; and `os-get-prop'.
+;; Some accessors are available for both structure.  See `org-sync-set-prop',
+;; and `org-sync-get-prop'.
 
 
 ;; When importing an URL, Org-sync matches the URL against the
-;; variable `os-backend-alist' which maps regexps to backend symbols.
+;; variable `org-sync-backend-alist' which maps regexps to backend symbols.
 ;; The backend symbol is then used to call the backend functions.
-;; When these functions are called, the variable `os-backend' and
-;; `os-base-url' are dynamically bound to respectively the backend
+;; When these functions are called, the variable `org-sync-backend' and
+;; `org-sync-base-url' are dynamically bound to respectively the backend
 ;; symbol and the canonical URL for the thing you are syncing with.
 
-;; The symbol part in a `os-backend-alist' pair must be a variable
+;; The symbol part in a `org-sync-backend-alist' pair must be a variable
 ;; defined in the backend.  It is an alist that maps verb to function
 ;; symbol.  Each backend must implement at least 3 verbs:
 
@@ -117,11 +117,11 @@
 
 ;; Given the user URL, returns the canonical URL to represent it.
 ;; This URL will be available dynamically to all of your backend
-;; function through the `os-base-url' variable.
+;; function through the `org-sync-base-url' variable.
 
 ;; * fetch-buglist (param: LAST-FETCH-TIME)
 
-;; Fetch the buglist at `os-base-url'.  If LAST-FETCH-TIME is non-nil,
+;; Fetch the buglist at `org-sync-base-url'.  If LAST-FETCH-TIME is non-nil,
 ;; and you only fetched things modified since it, you are expected to
 ;; set the property :since to it in the buglist you return.  You can
 ;; add whatever properties you want in a bug.  The lisp printer is
@@ -129,73 +129,73 @@
 
 ;; * send-buglist (param: BUGLIST)
 
-;; Send BUGLIST to the repo at `os-base-url' and return the new bugs
+;; Send BUGLIST to the repo at `org-sync-base-url' and return the new bugs
 ;; created that way. A bug without an id in BUGLIST is a new bug, the
 ;; rest are modified bug.
 
 
 ;; When synchronizing, Org-sync parses the current buffer using
 ;; org-element and convert any found buglist headline to a buglist
-;; data structure.  See `os-headline-to-buglist',
-;; `os-headline-to-bug'.
+;; data structure.  See `org-sync-headline-to-buglist',
+;; `org-sync-headline-to-bug'.
 
 ;; When writing buglists back to the document, Org-sync converts them
 ;; to elements -- the data structure used by org-element -- which are
 ;; then interpreted by `org-element-interpret-data'.  The resulting
-;; string is then inserted in the buffer.  See `os-buglist-to-element'
-;; and `os-bug-to-element'.
+;; string is then inserted in the buffer.  See `org-sync-buglist-to-element'
+;; and `org-sync-bug-to-element'.
 
 (require 'cl-lib)
 (require 'org)
 (require 'org-element)
 
-(defvar os-backend nil
+(defvar org-sync-backend nil
   "Org-sync current backend.")
 
-(defvar os-base-url nil
+(defvar org-sync-base-url nil
   "Org-sync current base url.")
 
-(defvar os-backend-alist
-  '(("github.com/\\(?:repos/\\)?[^/]+/[^/]+" . os-github-backend)
-    ("bitbucket.org/[^/]+/[^/]+"             . os-bb-backend)
-    ("/projects/[^/]+"                       . os-rmine-backend)
-    ("rememberthemilk.com"                   . os-rtm-backend))
+(defvar org-sync-backend-alist
+  '(("github.com/\\(?:repos/\\)?[^/]+/[^/]+" . org-sync-github-backend)
+    ("bitbucket.org/[^/]+/[^/]+"             . org-sync-bb-backend)
+    ("/projects/[^/]+"                       . org-sync-rmine-backend)
+    ("rememberthemilk.com"                   . org-sync-rtm-backend))
   "Alist of url patterns vs corresponding org-sync backend.")
 
-(defvar os-cache-file (concat user-emacs-directory "org-sync-cache")
+(defvar org-sync-cache-file (concat user-emacs-directory "org-sync-cache")
   "Path to Org-sync cache file.")
 
-(defvar os-cache-alist nil
+(defvar org-sync-cache-alist nil
   "Org-sync cache for buglists.
 Maps URLs to buglist cache.")
 
-(defvar os-conflict-buffer "*Org-sync conflict*"
+(defvar org-sync-conflict-buffer "*Org-sync conflict*"
   "Name of the conflict buffer")
 
-(defvar os-sync-props nil
+(defvar org-sync-props nil
   "List of property to sync or nil to sync everything.")
 
-(defun os-action-fun (action)
+(defun org-sync-action-fun (action)
   "Return current backend ACTION function or nil."
-  (unless (or (null action) (null os-backend))
-    (let ((fsym (assoc-default action (eval os-backend))))
+  (unless (or (null action) (null org-sync-backend))
+    (let ((fsym (assoc-default action (eval org-sync-backend))))
       (when (fboundp fsym)
         fsym))))
 
-(defun os-get-backend (url)
-  "Return backend symbol matching URL from `os-backend-alist'."
-  (assoc-default url os-backend-alist 'string-match))
+(defun org-sync-get-backend (url)
+  "Return backend symbol matching URL from `org-sync-backend-alist'."
+  (assoc-default url org-sync-backend-alist 'string-match))
 
-(defmacro os-with-backend (backend &rest body)
-  "Eval BODY with os-backend set to corresponding BACKEND.
+(defmacro org-sync-with-backend (backend &rest body)
+  "Eval BODY with org-sync-backend set to corresponding BACKEND.
 
-If BACKEND evals to a string it is passed to os-get-backend, the
-resulting symbol is dynamically assigned to os-backend.  The url
-is passed to os--base-url and dynamically assigned to
-os-base-url.
+If BACKEND evals to a string it is passed to org-sync-get-backend, the
+resulting symbol is dynamically assigned to org-sync-backend.  The url
+is passed to org-sync--base-url and dynamically assigned to
+org-sync-base-url.
 
 Else BACKEND should be a backend symbol.  It is
-assigned to os-backend."
+assigned to org-sync-backend."
   (declare (indent 1) (debug t))
   (let ((res (cl-gensym))
         (url (cl-gensym)))
@@ -204,35 +204,35 @@ assigned to os-backend."
             (,url))
        (when (stringp ,res)
          (setq ,url ,res)
-         (setq ,res (os-get-backend ,url)))
+         (setq ,res (org-sync-get-backend ,url)))
        (unless (symbolp ,res)
          (error "Backend %s does not evaluate to a symbol."
                 (prin1-to-string ',backend)))
-       (let* ((os-backend ,res)
-              (os-base-url (os--base-url ,url)))
+       (let* ((org-sync-backend ,res)
+              (org-sync-base-url (org-sync--base-url ,url)))
          ,@body))))
 
-(defun os-set-cache (url buglist)
-  "Update URL to BUGLIST in `os-cache-alist'."
-  (let ((cell (assoc url os-cache-alist)))
+(defun org-sync-set-cache (url buglist)
+  "Update URL to BUGLIST in `org-sync-cache-alist'."
+  (let ((cell (assoc url org-sync-cache-alist)))
     (if cell
         (setcdr cell buglist)
-      (push (cons url buglist) os-cache-alist))))
+      (push (cons url buglist) org-sync-cache-alist))))
 
-(defun os-get-cache (url)
+(defun org-sync-get-cache (url)
   "Return the buglist at URL in cache or nil."
-    (cdr (assoc url os-cache-alist)))
+    (cdr (assoc url org-sync-cache-alist)))
 
-(defun os-write-cache ()
-  "Write Org-sync cache to `os-cache-file'."
-  (with-temp-file os-cache-file
-    (prin1 `(setq os-cache-alist ',os-cache-alist) (current-buffer))))
+(defun org-sync-write-cache ()
+  "Write Org-sync cache to `org-sync-cache-file'."
+  (with-temp-file org-sync-cache-file
+    (prin1 `(setq org-sync-cache-alist ',org-sync-cache-alist) (current-buffer))))
 
-(defun os-load-cache ()
-  "Load Org-sync cache from `os-cache-file'."
-  (load os-cache-file 'noerror nil))
+(defun org-sync-load-cache ()
+  "Load Org-sync cache from `org-sync-cache-file'."
+  (load org-sync-cache-file 'noerror nil))
 
-(defun os-plist-to-alist (plist)
+(defun org-sync-plist-to-alist (plist)
   "Return PLIST as an association list."
   (let* (alist cell q (p plist))
     (while p
@@ -246,21 +246,21 @@ assigned to os-backend."
       (setq p (cddr p)))
     alist))
 
-(defun os-propertize (sym)
+(defun org-sync-propertize (sym)
   "Return sym as a property i.e. prefixed with :."
   (intern (concat ":" (if (symbolp sym)
                           (symbol-name sym)
                         sym))))
 
-(defun os-get-prop (key b)
+(defun org-sync-get-prop (key b)
   "Return value of the property KEY in buglist or bug B."
   (plist-get b key))
 
-(defun os-set-prop (key val b)
+(defun org-sync-set-prop (key val b)
   "Set KEY to VAL in buglist or bug B."
   (plist-put b key val))
 
-(defun os-append! (elem list)
+(defun org-sync-append! (elem list)
   "Add ELEM at the end of LIST by side effect if it isn't present.
 
 Return ELEM if it was added, nil otherwise."
@@ -273,30 +273,30 @@ Return ELEM if it was added, nil otherwise."
       (setcdr p (cons elem nil))
       elem)))
 
-(defun os--send-buglist (buglist)
+(defun org-sync--send-buglist (buglist)
   "Send a BUGLIST on the bugtracker."
-  (let ((f (os-action-fun 'send-buglist)))
+  (let ((f (org-sync-action-fun 'send-buglist)))
         (if f
             (funcall f buglist)
           (error "No send backend available."))))
 
-(defun os--fetch-buglist (last-update)
+(defun org-sync--fetch-buglist (last-update)
   "Return the buglist at url REPO."
-  (let ((f (os-action-fun 'fetch-buglist)))
+  (let ((f (org-sync-action-fun 'fetch-buglist)))
         (if f
             (funcall f last-update)
           (error "No fetch backend available."))))
 
 
-(defun os--base-url (url)
+(defun org-sync--base-url (url)
   "Return the base url of URL."
-  (let ((f (os-action-fun 'base-url)))
+  (let ((f (org-sync-action-fun 'base-url)))
         (if f
             (funcall f url)
           (error "No base-url backend available."))))
 
 
-(defun os-url-param (url param)
+(defun org-sync-url-param (url param)
   "Return URL with PARAM alist appended."
   (let* ((split (split-string url "\\?" t))
          (base (car split))
@@ -338,29 +338,29 @@ Return ELEM if it was added, nil otherwise."
                 final "&"))))
 
 ;; OPEN bugs sorted by mod time then CLOSED bugs sorted by mod time
-(defun os-bug-sort (a b)
+(defun org-sync-bug-sort (a b)
   "Return non-nil if bug A should appear before bug B."
   (cl-flet ((time-less-safe (a b)
                             (if (and a b)
                                 (time-less-p a b)
                               (or a b))))
-    (let* ((ao (eq 'open (os-get-prop :status a)))
-           (bc (not (eq 'open (os-get-prop :status b))))
+    (let* ((ao (eq 'open (org-sync-get-prop :status a)))
+           (bc (not (eq 'open (org-sync-get-prop :status b))))
            (am (time-less-safe
-                (os-get-prop :date-modification b)
-                (os-get-prop :date-modification a))))
+                (org-sync-get-prop :date-modification b)
+                (org-sync-get-prop :date-modification a))))
       (or
        (and ao am)
        (and bc am)
        (and ao bc)))))
 
-(defun os-buglist-to-element (bl)
+(defun org-sync-buglist-to-element (bl)
   "Return buglist BL as an element."
   (let* ((skip '(:title :bugs :date-cache))
-         (sorted (sort (os-get-prop :bugs bl) 'os-bug-sort))
-         (elist (delq nil (mapcar 'os-bug-to-element sorted)))
-         (title (os-get-prop :title bl))
-         (url (os-get-prop :url bl))
+         (sorted (sort (org-sync-get-prop :bugs bl) 'org-sync-bug-sort))
+         (elist (delq nil (mapcar 'org-sync-bug-to-element sorted)))
+         (title (org-sync-get-prop :title bl))
+         (url (org-sync-get-prop :url bl))
          (props (sort (mapcar
                        ;; stringify prop name
                        (lambda (x)
@@ -368,47 +368,47 @@ Return ELEM if it was added, nil otherwise."
                        ;; remove skipped prop
                        (cl-remove-if (lambda (x)
                                        (memq (car x) skip))
-                                     (os-plist-to-alist bl)))
+                                     (org-sync-plist-to-alist bl)))
                       ;; sort prop by key
                       (lambda (a b)
                         (string< (car a) (car b))))))
 
-    (os-set-prop :bugs sorted bl)
+    (org-sync-set-prop :bugs sorted bl)
     `(headline
       (:level 1 :title (,title))
       (section
        nil
-       ,(os-alist-to-property-drawer props))
+       ,(org-sync-alist-to-property-drawer props))
       ,@elist)))
 
-(defun os-filter-list (list minus)
+(defun org-sync-filter-list (list minus)
   "Return a copy of LIST without elements in MINUS."
   (let ((final (cl-copy-seq list)))
     (mapc (lambda (x)
             (delq x final)) minus)
     final))
 
-(defun os-bug-to-element (b)
+(defun org-sync-bug-to-element (b)
   "Return bug B as a TODO element if it is visible or nil."
   ;; not in PROPERTIES block
   (let* ((skip '(:title :status :desc :old-bug
                         :date-deadline :date-creation :date-modification))
-         (title (os-get-prop :title b))
-         (dtime (os-get-prop :date-deadline b))
-         (ctime (os-get-prop :date-creation b))
-         (mtime (os-get-prop :date-modification b))
+         (title (org-sync-get-prop :title b))
+         (dtime (org-sync-get-prop :date-deadline b))
+         (ctime (org-sync-get-prop :date-creation b))
+         (mtime (org-sync-get-prop :date-modification b))
          (prop-alist (cl-loop for (a b) on b by #'cddr
                               if (and b (not (memq a skip)))
                               collect (cons (substring (symbol-name a) 1)
                                             (prin1-to-string b)))))
-    (unless (os-get-prop :delete b)
+    (unless (org-sync-get-prop :delete b)
       ;; add date-xxx props manually in a human readable way.
       (push (cons
              "date-creation"
-             (os-time-to-string ctime)) prop-alist)
+             (org-sync-time-to-string ctime)) prop-alist)
       (push (cons
              "date-modification"
-             (os-time-to-string mtime)) prop-alist)
+             (org-sync-time-to-string mtime)) prop-alist)
 
       ;; sort PROPERTIES by property name
       (setq prop-alist (sort prop-alist
@@ -424,33 +424,33 @@ Return ELEM if it was added, nil otherwise."
                      (format-time-string (org-time-stamp-format) dtime))))
                 :level 2
                 :todo-type todo
-                :todo-keyword ,(upcase (symbol-name (os-get-prop :status b))))
+                :todo-keyword ,(upcase (symbol-name (org-sync-get-prop :status b))))
         (section
          nil
-         ,(os-alist-to-property-drawer prop-alist)
-         (fixed-width (:value ,(os-get-prop :desc b))))))))
+         ,(org-sync-alist-to-property-drawer prop-alist)
+         (fixed-width (:value ,(org-sync-get-prop :desc b))))))))
 
-(defun os-headline-url (e)
+(defun org-sync-headline-url (e)
   "Returns the url of the buglist in headline E."
   (cdr (assoc "url"
-              (os-property-drawer-to-alist
+              (org-sync-property-drawer-to-alist
                (car (org-element-contents
                      (car (org-element-contents e))))))))
 
-(defun os-buglist-headline-p (elem)
+(defun org-sync-buglist-headline-p (elem)
   "Return t if ELEM is a buglist headline."
   (and
    (eq (org-element-type elem) 'headline)
-   (stringp (os-headline-url elem))))
+   (stringp (org-sync-headline-url elem))))
 
-(defun os-property-drawer-to-alist (drawer)
+(defun org-sync-property-drawer-to-alist (drawer)
   "Return the alist of all key value pairs"
   (org-element-map drawer
                    'node-property
                    (lambda (x) (cons (org-element-property :key x)
                                 (org-element-property :value x)))))
 
-(defun os-alist-to-property-drawer (alist)
+(defun org-sync-alist-to-property-drawer (alist)
   "Return the property drawer corresponding to an alist of key
   value pairs"
   `(property-drawer nil
@@ -458,16 +458,16 @@ Return ELEM if it was added, nil otherwise."
                       (lambda (x) `(node-property (:key ,(car x) :value ,(cdr x))))
                       alist)))
 
-(defun os-headline-to-buglist (h)
+(defun org-sync-headline-to-buglist (h)
   "Return headline H as a buglist."
   (let* ((skip '(:url))
-         (alist (os-property-drawer-to-alist
+         (alist (org-sync-property-drawer-to-alist
                  (car (org-element-contents
                        (car (org-element-contents h))))))
          (title (car (org-element-property :title h)))
          (url (cdr (assoc "url" alist)))
          (bugs (mapcar
-                'os-headline-to-bug
+                'org-sync-headline-to-bug
                 (nthcdr 1 (org-element-contents h))))
          (bl `(:title ,title
                       :url ,url
@@ -475,29 +475,29 @@ Return ELEM if it was added, nil otherwise."
 
     ;; add all other properties
     (mapc (lambda (x)
-            (let ((k (os-propertize (car x)))
+            (let ((k (org-sync-propertize (car x)))
                   (v (cdr x)))
               (unless (memq k skip)
-                (os-set-prop k v bl))))
+                (org-sync-set-prop k v bl))))
           alist)
 
     bl))
 
-(defun os-headline-to-bug (h)
+(defun org-sync-headline-to-bug (h)
   "Return headline H as a bug."
   (let* ((todo-keyword (org-element-property :todo-keyword h))
          ;; properties to skip when looking at the PROPERTIES block
          (skip '(:status :title :desc :date-deadline :date-creation :date-modification))
          (status (intern (downcase (or todo-keyword "open"))))
-         (dtime (os-parse-date (org-element-property :deadline h)))
+         (dtime (org-sync-parse-date (org-element-property :deadline h)))
          (title (car (org-element-property :title h)))
          (section (org-element-contents (car (org-element-contents h))))
-         (headline-alist (os-property-drawer-to-alist
+         (headline-alist (org-sync-property-drawer-to-alist
                           (car
                            (org-element-contents
                             (car (org-element-contents h))))))
-         (ctime (os-parse-date (cdr (assoc "date-creation" headline-alist))))
-         (mtime (os-parse-date (cdr (assoc "date-modification" headline-alist))))
+         (ctime (org-sync-parse-date (cdr (assoc "date-creation" headline-alist))))
+         (mtime (org-sync-parse-date (cdr (assoc "date-modification" headline-alist))))
          desc
          bug)
 
@@ -537,26 +537,26 @@ Return ELEM if it was added, nil otherwise."
 
     ;; add all properties
     (mapc (lambda (x)
-            (let ((k (os-propertize (car x)))
+            (let ((k (org-sync-propertize (car x)))
                   (v (when (and (cdr x) (not (equal (cdr x) "")))
                        (read (cdr x)))))
               (unless (memq k skip)
                 (setq bug (cons k (cons v bug)))))) headline-alist)
     bug))
 
-(defun os-find-buglists (elem)
+(defun org-sync-find-buglists (elem)
   "Return every buglist headlines in ELEM."
   (let ((type (org-element-type elem))
         (contents (org-element-contents elem)))
     (cond
      ;; if it's a buglist, return it
-     ((os-buglist-headline-p elem)
+     ((org-sync-buglist-headline-p elem)
       elem)
      ;; else if it contains elements, look recursively in it
      ((or (eq type 'org-data) (memq type org-element-greater-elements))
       (let (buglist)
         (mapc (lambda (e)
-                (let ((h (os-find-buglists e)))
+                (let ((h (org-sync-find-buglists e)))
                   (when h
                     (setq buglist (cons h buglist)))))
               contents)
@@ -565,7 +565,7 @@ Return ELEM if it was added, nil otherwise."
      (t
       nil))))
 
-(defun os-add-keyword (tree key val)
+(defun org-sync-add-keyword (tree key val)
   "Add KEY:VAL as a header in TREE by side-effects and return TREE.
 If KEY is already equal to VAL, no change is made."
   (catch :exit
@@ -589,7 +589,7 @@ If KEY is already equal to VAL, no change is made."
                (org-element-contents section))))))
   tree)
 
-(defun os-org-reparse ()
+(defun org-sync-org-reparse ()
   "Reparse current buffer."
   ;; from org-ctrl-c-ctrl-c, thanks to vsync in #org-mode
   (let ((org-inhibit-startup-visibility-stuff t)
@@ -599,17 +599,17 @@ If KEY is already equal to VAL, no change is made."
       (setq org-table-coordinate-overlays nil))
     (org-save-outline-visibility 'use-markers (org-mode-restart))))
 
-(defun os-import (url)
+(defun org-sync-import (url)
   "Fetch and insert at point bugs from URL."
   (interactive "sURL: ")
-  (os-with-backend url
-   (let* ((buglist (os--fetch-buglist nil))
-          (elem (os-buglist-to-element buglist))
+  (org-sync-with-backend url
+   (let* ((buglist (org-sync--fetch-buglist nil))
+          (elem (org-sync-buglist-to-element buglist))
           (bug-keyword '(sequence "OPEN" "|" "CLOSED")))
 
      ;; we add the buglist to the cache
-     (os-set-prop :date-cache (current-time) buglist)
-     (os-set-cache os-base-url buglist)
+     (org-sync-set-prop :date-cache (current-time) buglist)
+     (org-sync-set-cache org-sync-base-url buglist)
 
      (save-excursion
        (insert (org-element-interpret-data
@@ -622,35 +622,35 @@ If KEY is already equal to VAL, no change is made."
 
          ;; the buffer has to be reparsed in order to have the new
          ;; keyword taken into account
-         (os-org-reparse)))))
+         (org-sync-org-reparse)))))
   (message "Import complete."))
 
-(defun os-get-bug-id (buglist id)
+(defun org-sync-get-bug-id (buglist id)
   "Return bug ID from BUGLIST."
   (when id
       (catch :exit
         (mapc (lambda (x)
-                (let ((current-id (os-get-prop :id x)))
+                (let ((current-id (org-sync-get-prop :id x)))
                   (when (and (numberp current-id) (= current-id id))
                     (throw :exit x))))
-              (os-get-prop :bugs buglist))
+              (org-sync-get-prop :bugs buglist))
         nil)))
 
-(defun os-buglist-dups (buglist)
+(defun org-sync-buglist-dups (buglist)
   "Return non-nil if BUGLIST contains bugs with the same id.
 The value returned is a list of duplicated ids."
   (let ((hash (make-hash-table))
         (dups))
     (mapc (lambda (x)
-            (let ((id (os-get-prop :id x)))
+            (let ((id (org-sync-get-prop :id x)))
               (puthash id (1+ (gethash id hash 0)) hash)))
-          (os-get-prop :bugs buglist))
+          (org-sync-get-prop :bugs buglist))
     (maphash (lambda (id nb)
                (when (> nb 1)
                  (push id dups))) hash)
     dups))
 
-(defun os-time-max (&rest timelist)
+(defun org-sync-time-max (&rest timelist)
   "Return the largest time in TIMELIST."
   (cl-reduce (lambda (a b)
                (if (and a b)
@@ -658,13 +658,13 @@ The value returned is a list of duplicated ids."
                (or a b))
              timelist))
 
-(defun os-buglist-last-update (buglist)
+(defun org-sync-buglist-last-update (buglist)
   "Return the most recent creation/modi date in BUGLIST."
-  (apply 'os-time-max (cl-loop for x in (os-get-prop :bugs buglist)
-                               collect (os-get-prop :date-creation x) and
-                               collect (os-get-prop :date-modification x))))
+  (apply 'org-sync-time-max (cl-loop for x in (org-sync-get-prop :bugs buglist)
+                               collect (org-sync-get-prop :date-creation x) and
+                               collect (org-sync-get-prop :date-modification x))))
 
-(defun os-set-equal (a b)
+(defun org-sync-set-equal (a b)
   "Return t if list A and B have the same elements, no matter the order."
   (catch :exit
     (mapc (lambda (e)
@@ -677,16 +677,16 @@ The value returned is a list of duplicated ids."
           b)
     t))
 
-(defun os-parse-date (date)
+(defun org-sync-parse-date (date)
   "Parse and return DATE as a time or nil."
   (when (and (stringp date) (not (string= date "")))
     (date-to-time date)))
 
-(defun os-time-to-string (time)
+(defun org-sync-time-to-string (time)
   "Return TIME as a full ISO 8601 date string."
   (format-time-string "%Y-%m-%dT%T%z" time))
 
-(defun os-bug-diff (a b)
+(defun org-sync-bug-diff (a b)
   "Return an alist of properties that differs in A and B or nil if A = B.
 The form of the alist is ((:property . (valueA valueB)...)"
   (let ((diff)
@@ -696,35 +696,35 @@ The form of the alist is ((:property . (valueA valueB)...)"
           (cl-loop for (bkey bval) on b by #'cddr collect bkey))))
     (delete-dups props-list)
     (dolist (key props-list diff)
-      (let ((va (os-get-prop key a))
-            (vb (os-get-prop key b)))
+      (let ((va (org-sync-get-prop key a))
+            (vb (org-sync-get-prop key b)))
         (unless (equal va vb)
           (setq diff (cons `(,key . (,va ,vb)) diff)))))))
 
-(defun os-bug-prop-equalp (prop a b)
+(defun org-sync-bug-prop-equalp (prop a b)
   "Return t if bug A PROP = bug B PROP, nil otherwise."
-  (equal (os-get-prop prop a) (os-get-prop prop b)))
+  (equal (org-sync-get-prop prop a) (org-sync-get-prop prop b)))
 
-(defun os-buglist-diff (a b)
+(defun org-sync-buglist-diff (a b)
   "Return a diff buglist which turns buglist A to B when applied.
 This function makes the assumption that A ⊂ B."
   (let (diff)
-    (dolist (bbug (os-get-prop :bugs b))
-      (let ((abug (os-get-bug-id a (os-get-prop :id bbug))))
-        (when (or (null abug) (os-bug-diff abug bbug))
+    (dolist (bbug (org-sync-get-prop :bugs b))
+      (let ((abug (org-sync-get-bug-id a (org-sync-get-prop :id bbug))))
+        (when (or (null abug) (org-sync-bug-diff abug bbug))
           (push bbug diff))))
     `(:bugs ,diff)))
 
-(defun os-merge-diff (local remote)
+(defun org-sync-merge-diff (local remote)
   "Return the merge of LOCAL diff and REMOTE diff.
 The merge is the union of the diff.  Conflicting bugs are tagged
 with :sync conflict-local or conflict-remote."
   (let ((added (make-hash-table))
         merge)
     ;; add all local bugs
-    (dolist (lbug (os-get-prop :bugs local))
-      (let* ((id (os-get-prop :id lbug))
-             (rbug (os-get-bug-id remote id))
+    (dolist (lbug (org-sync-get-prop :bugs local))
+      (let* ((id (org-sync-get-prop :id lbug))
+             (rbug (org-sync-get-bug-id remote id))
             rnew lnew)
 
         ;; if there's a remote bug with the same id, we have a
@@ -733,12 +733,12 @@ with :sync conflict-local or conflict-remote."
         ;; if the local bug has a sync prop, it was merged by the
         ;; user, so we keep the local one (which might be the
         ;; remote from a previous sync)
-        (if (and rbug (null (os-get-prop :sync lbug)) (os-bug-diff lbug rbug))
+        (if (and rbug (null (org-sync-get-prop :sync lbug)) (org-sync-bug-diff lbug rbug))
             (progn
               (setq lnew (copy-tree lbug))
-              (os-set-prop :sync 'conflict-local lnew)
+              (org-sync-set-prop :sync 'conflict-local lnew)
               (setq rnew (copy-tree rbug))
-              (os-set-prop :sync 'conflict-remote rnew)
+              (org-sync-set-prop :sync 'conflict-remote rnew)
               (push rnew merge)
               (push lnew merge))
           (progn
@@ -748,60 +748,60 @@ with :sync conflict-local or conflict-remote."
         (puthash id t added)))
 
     ;; add new remote bug which are the unmarked bugs in remote
-    (dolist (rbug (os-get-prop :bugs remote))
-      (unless (gethash (os-get-prop :id rbug) added)
+    (dolist (rbug (org-sync-get-prop :bugs remote))
+      (unless (gethash (org-sync-get-prop :id rbug) added)
         (push rbug merge)))
 
     `(:bugs ,merge)))
 
-(defun os-update-buglist (base diff)
+(defun org-sync-update-buglist (base diff)
   "Apply buglist DIFF to buglist BASE and return the result.
-This is done according to `os-sync-props'."
+This is done according to `org-sync-props'."
   (let ((added (make-hash-table))
         new)
-    (dolist (bug (os-get-prop :bugs base))
-      (let* ((id (os-get-prop :id bug))
-             (diff-bug (os-get-bug-id diff id))
+    (dolist (bug (org-sync-get-prop :bugs base))
+      (let* ((id (org-sync-get-prop :id bug))
+             (diff-bug (org-sync-get-bug-id diff id))
              new-bug)
 
-        (if (and os-sync-props diff-bug)
+        (if (and org-sync-props diff-bug)
             (progn
               (setq new-bug bug)
               (mapc (lambda (p)
-                      (os-set-prop p (os-get-prop p diff-bug) new-bug))
-                    os-sync-props))
+                      (org-sync-set-prop p (org-sync-get-prop p diff-bug) new-bug))
+                    org-sync-props))
           (setq new-bug (or diff-bug bug)))
 
         (push new-bug new)
         (puthash id t added)))
 
-    (dolist (bug (os-get-prop :bugs diff))
-      (let ((id (os-get-prop :id bug)))
+    (dolist (bug (org-sync-get-prop :bugs diff))
+      (let ((id (org-sync-get-prop :id bug)))
         (when (or (null id) (null (gethash id added)))
           (push bug new))))
 
     (let ((new-buglist (cl-copy-list base)))
-      (os-set-prop :bugs new new-buglist)
+      (org-sync-set-prop :bugs new new-buglist)
       new-buglist)))
 
-(defun os-remove-unidentified-bug (buglist)
+(defun org-sync-remove-unidentified-bug (buglist)
   "Remove bugs without id from BUGLIST."
   (let ((new-bugs))
-    (dolist (b (os-get-prop :bugs buglist))
-      (when (os-get-prop :id b)
+    (dolist (b (org-sync-get-prop :bugs buglist))
+      (when (org-sync-get-prop :id b)
         (push b new-bugs)))
-    (os-set-prop :bugs new-bugs buglist)
+    (org-sync-set-prop :bugs new-bugs buglist)
     buglist))
 
-(defun os-replace-headline-by-buglist (headline buglist)
+(defun org-sync-replace-headline-by-buglist (headline buglist)
   "Replace HEADLINE by BUGLIST by side effects."
-  (let ((new-headline (os-buglist-to-element buglist)))
+  (let ((new-headline (org-sync-buglist-to-element buglist)))
     (setf (car headline) (car new-headline)
           (cdr headline) (cdr new-headline))))
 
-(defun os-show-conflict (buglist url)
+(defun org-sync-show-conflict (buglist url)
   "Show conflict in BUGLIST at URL in conflict window."
-  (let ((buf (get-buffer-create os-conflict-buffer)))
+  (let ((buf (get-buffer-create org-sync-conflict-buffer)))
     (with-help-window buf
       (with-current-buffer buf
         (erase-buffer)
@@ -810,58 +810,58 @@ This is done according to `os-sync-props'."
 are the problematic items.  Look at the :sync property to know
 their origin. Copy what you want to keep in your org buffer and
 sync again.\n\n")
-        (dolist (b (os-get-prop :bugs buglist))
-          (when (and b (os-get-prop :sync b))
-            (insert (org-element-interpret-data (os-bug-to-element b))
+        (dolist (b (org-sync-get-prop :bugs buglist))
+          (when (and b (org-sync-get-prop :sync b))
+            (insert (org-element-interpret-data (org-sync-bug-to-element b))
                     "\n")))))))
 
-(defun os-getalist (obj &rest keys)
+(defun org-sync-getalist (obj &rest keys)
   "Apply assoc in nested alist OBJ with KEYS."
   (let ((p obj))
     (dolist (k keys p)
       (setq p (cdr (assoc k p))))))
 
-(defun os-filter-bug (bug)
-  "Filter BUG according to `os-sync-props'."
-  (if os-sync-props
-      (let ((new-bug `(:id ,(os-get-prop :id bug))))
+(defun org-sync-filter-bug (bug)
+  "Filter BUG according to `org-sync-props'."
+  (if org-sync-props
+      (let ((new-bug `(:id ,(org-sync-get-prop :id bug))))
         (mapc (lambda (x)
-                (os-set-prop x (os-get-prop x bug) new-bug))
-              os-sync-props)
+                (org-sync-set-prop x (org-sync-get-prop x bug) new-bug))
+              org-sync-props)
         new-bug)
     bug))
 
-(defun os-filter-diff (diff)
-  "Filter DIFF according to `os-sync-props'."
-  (when os-sync-props
+(defun org-sync-filter-diff (diff)
+  "Filter DIFF according to `org-sync-props'."
+  (when org-sync-props
     (let (final)
-      (dolist (b (os-get-prop :bugs diff))
-        (let ((id (os-get-prop :id b)))
+      (dolist (b (org-sync-get-prop :bugs diff))
+        (let ((id (org-sync-get-prop :id b)))
           ;; drop new bugs
           (when id
-            (push (os-filter-bug b) final))))
-      (os-set-prop :bugs final diff)))
+            (push (org-sync-filter-bug b) final))))
+      (org-sync-set-prop :bugs final diff)))
   diff)
 
-(defun os-sync ()
+(defun org-sync ()
   "Update buglists in current buffer."
   (interactive)
-  (ignore-errors (kill-buffer os-conflict-buffer))
+  (ignore-errors (kill-buffer org-sync-conflict-buffer))
 
   ;; parse the buffer and find the buglist-looking headlines
   (let* ((local-doc (org-element-parse-buffer))
-         (local-headlines (os-find-buglists local-doc)))
+         (local-headlines (org-sync-find-buglists local-doc)))
 
     ;; for each of these headlines, convert it to buglist
     (dolist (headline local-headlines)
-      (let* ((local (os-headline-to-buglist headline))
-             (url (os-get-prop :url local)))
+      (let* ((local (org-sync-headline-to-buglist headline))
+             (url (org-sync-get-prop :url local)))
 
         ;; if it has several bug with the same id, stop
-        (when (os-buglist-dups local)
+        (when (org-sync-buglist-dups local)
           (error
            "Buglist \"%s\" contains unmerged bugs."
-           (os-get-prop :title local)))
+           (org-sync-get-prop :title local)))
 
         ;; local          cache          remote
         ;;    \          /    \          /
@@ -879,50 +879,50 @@ sync again.\n\n")
         ;;        new cache/local/remote
 
         ;; handle buglist with the approriate backend
-        (os-with-backend url
-          (let* ((cache (os-get-cache os-base-url))
-                 (last-fetch (os-get-prop :date-cache cache))
-                 (local-diff (os-buglist-diff cache local))
-                 remote remote-diff merged merged-diff)
+        (org-sync-with-backend url
+                               (let* ((cache (org-sync-get-cache org-sync-base-url))
+                                      (last-fetch (org-sync-get-prop :date-cache cache))
+                                      (local-diff (org-sync-buglist-diff cache local))
+                                      remote remote-diff merged merged-diff)
 
-            ;; fetch remote buglist
-            (if last-fetch
-                ;; make a partial fetch and apply it to cache if the backend
-                ;; supports it
-                (let* ((partial-fetch (os--fetch-buglist last-fetch)))
-                  (if (os-get-prop :since partial-fetch)
-                      (setq remote (os-update-buglist cache partial-fetch))
-                    (setq remote partial-fetch)))
-              (setq remote (os--fetch-buglist nil)))
-            ;; at this point remote is the full remote buglist
+                                 ;; fetch remote buglist
+                                 (if last-fetch
+                                     ;; make a partial fetch and apply it to cache if the backend
+                                     ;; supports it
+                                     (let* ((partial-fetch (org-sync--fetch-buglist last-fetch)))
+                                       (if (org-sync-get-prop :since partial-fetch)
+                                           (setq remote (org-sync-update-buglist cache partial-fetch))
+                                         (setq remote partial-fetch)))
+                                   (setq remote (org-sync--fetch-buglist nil)))
+                                 ;; at this point remote is the full remote buglist
 
-            (setq remote-diff (os-buglist-diff cache remote))
-            (setq merged-diff (os-merge-diff local-diff remote-diff))
+                                 (setq remote-diff (org-sync-buglist-diff cache remote))
+                                 (setq merged-diff (org-sync-merge-diff local-diff remote-diff))
 
-            ;; filter according to os-sync-props
-            (os-filter-diff merged-diff)
+                                 ;; filter according to org-sync-props
+                                 (org-sync-filter-diff merged-diff)
 
-            (setq merged (os-update-buglist local merged-diff))
+                                 (setq merged (org-sync-update-buglist local merged-diff))
 
-            ;; if merged-diff has duplicate bugs, there's a conflict
-            (let ((dups (os-buglist-dups merged-diff)))
-              (if dups
-                  (progn
-                    (message "Synchronization failed, manual merge needed.")
-                    (os-show-conflict merged-diff os-base-url))
+                                 ;; if merged-diff has duplicate bugs, there's a conflict
+                                 (let ((dups (org-sync-buglist-dups merged-diff)))
+                                   (if dups
+                                       (progn
+                                         (message "Synchronization failed, manual merge needed.")
+                                         (org-sync-show-conflict merged-diff org-sync-base-url))
 
-                ;; else update buffer and cache
-                (setq merged
-                      (os-remove-unidentified-bug
-                       (os-update-buglist merged (os--send-buglist merged-diff))))
-                (os-set-prop :date-cache (current-time) merged)
-                (os-set-cache os-base-url merged)
-                (message "Synchronization complete.")))
+                                     ;; else update buffer and cache
+                                     (setq merged
+                                           (org-sync-remove-unidentified-bug
+                                            (org-sync-update-buglist merged (org-sync--send-buglist merged-diff))))
+                                     (org-sync-set-prop :date-cache (current-time) merged)
+                                     (org-sync-set-cache org-sync-base-url merged)
+                                     (message "Synchronization complete.")))
 
-            ;; replace headlines in local-doc
-            (os-replace-headline-by-buglist headline merged)))))
+                                 ;; replace headlines in local-doc
+                                 (org-sync-replace-headline-by-buglist headline merged)))))
 
-    (os-add-keyword local-doc "TODO" "OPEN | CLOSED")
+    (org-sync-add-keyword local-doc "TODO" "OPEN | CLOSED")
 
     ;; since we replace the whole buffer, save-excusion doesn't work so
     ;; we manually (re)store the point
@@ -932,16 +932,16 @@ sync again.\n\n")
       (insert (org-element-interpret-data local-doc))
       (goto-char oldpoint))))
 
-(defun os ()
+(defun org-sync-or-import ()
   "Synchronize current buffer or import an external document.
 
 If no Org-sync elements are present in the buffer, ask for a URL
 to import otherwise synchronize the buffer."
   (interactive)
   (let* ((local-doc (org-element-parse-buffer)))
-    (if (os-find-buglists local-doc)
-        (os-sync)
-      (call-interactively 'os-import))))
+    (if (org-sync-find-buglists local-doc)
+        (org-sync)
+      (call-interactively 'org-sync-import))))
 
 (provide 'org-sync)
 ;;; org-sync.el ends here

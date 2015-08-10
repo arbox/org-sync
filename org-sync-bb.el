@@ -1,4 +1,4 @@
-;;; os-bb.el --- Bitbucket backend for org-sync.
+;;; org-sync-bb.el --- Bitbucket backend for org-sync.
 
 ;; Copyright (C) 2012  Aurelien Aptel
 ;;
@@ -40,23 +40,23 @@
 (defvar url-http-end-of-headers)
 (defvar url-http-response-status)
 
-(defvar os-bb-backend
-  '((base-url      . os-bb-base-url)
-    (fetch-buglist . os-bb-fetch-buglist)
-    (send-buglist  . os-bb-send-buglist))
+(defvar org-sync-bb-backend
+  '((base-url      . org-sync-bb-base-url)
+    (fetch-buglist . org-sync-bb-fetch-buglist)
+    (send-buglist  . org-sync-bb-send-buglist))
   "Bitbucket backend.")
 
-(defvar os-bb-auth nil
+(defvar org-sync-bb-auth nil
   "Bitbucket login (\"user\" . \"pwd\")")
 
-(defun os-bb-request (method url &optional data)
+(defun org-sync-bb-request (method url &optional data)
   "Send HTTP request at URL using METHOD with DATA.
 AUTH is a cons (\"user\" . \"pwd\").  Return the server
 decoded response in JSON."
   (message "%s %s %s" method url (prin1-to-string data))
   (let* ((url-request-method method)
          (url-request-data data)
-         (auth os-bb-auth)
+         (auth org-sync-bb-auth)
          (buf)
          (url-request-extra-headers
           (unless data
@@ -78,7 +78,7 @@ decoded response in JSON."
         (kill-buffer)))))
 
 ;; override
-(defun os-bb-base-url (url)
+(defun org-sync-bb-base-url (url)
   "Return base URL."
   (cond
    ;; web ui url
@@ -122,31 +122,31 @@ decoded response in JSON."
 ;;     - proposal
 ;;     - task
 
-(defconst os-bb-priority-list
+(defconst org-sync-bb-priority-list
   '("trivial" "minor" "major" "critical" "blocker")
   "List of valid priority for a bitbucket issue.")
 
-(defconst os-bb-status-list
+(defconst org-sync-bb-status-list
   '("new" "open" "resolved" "on hold" "invalid" "duplicate" "wontfix")
   "List of valid status for a bitbucket issue.")
 
-(defconst os-bb-kind-list
+(defconst org-sync-bb-kind-list
   '("bug" "enhancement" "proposal" "task")
   "List of valid kind for a bitbucket issue.")
 
-(defun os-bb-bug-to-form (bug)
+(defun org-sync-bb-bug-to-form (bug)
   "Return BUG as an form alist."
-  (let* ((priority (os-get-prop :priority bug))
-         (title (os-get-prop :title bug))
-         (desc (os-get-prop :desc bug))
-         (assignee (os-get-prop :assignee bug))
-         (status (if (eq (os-get-prop :status bug) 'open) "open" "resolved"))
-         (kind (os-get-prop :kind bug)))
+  (let* ((priority (org-sync-get-prop :priority bug))
+         (title (org-sync-get-prop :title bug))
+         (desc (org-sync-get-prop :desc bug))
+         (assignee (org-sync-get-prop :assignee bug))
+         (status (if (eq (org-sync-get-prop :status bug) 'open) "open" "resolved"))
+         (kind (org-sync-get-prop :kind bug)))
 
-    (if (and priority (not (member priority os-bb-priority-list)))
+    (if (and priority (not (member priority org-sync-bb-priority-list)))
       (error "Invalid priority \"%s\" at bug \"%s\"." priority title))
 
-    (if (and kind (not (member kind os-bb-kind-list)))
+    (if (and kind (not (member kind org-sync-bb-kind-list)))
       (error "Invalid kind \"%s\" at bug \"%s\"." kind title))
 
     (cl-remove-if (lambda (x)
@@ -158,7 +158,7 @@ decoded response in JSON."
                     ("priority"    . ,priority)
                     ("kind"        . ,kind)))))
 
-(defun os-bb-post-encode (args)
+(defun org-sync-bb-post-encode (args)
   "Return form alist ARGS as a url-encoded string."
   (mapconcat (lambda (arg)
                (concat (url-hexify-string (car arg))
@@ -166,31 +166,31 @@ decoded response in JSON."
                        (url-hexify-string (cdr arg))))
              args "&"))
 
-(defun os-bb-repo-name (url)
+(defun org-sync-bb-repo-name (url)
   "Return repo name at URL."
   (when (string-match "api\\.bitbucket.org/1\\.0/repositories/\\([^/]+\\)/\\([^/]+\\)" url)
     (match-string 2 url)))
 
-(defun os-bb-repo-user (url)
+(defun org-sync-bb-repo-user (url)
   "Return repo username at URL."
   (when (string-match "api\\.bitbucket.org/1\\.0/repositories/\\([^/]+\\)/\\([^/]+\\)" url)
     (match-string 1 url)))
 
 ;; override
-(defun os-bb-fetch-buglist (last-update)
-  "Return the buglist at os-base-url."
-  (let* ((url (concat os-base-url "/issues"))
-         (res (os-bb-request "GET" url))
+(defun org-sync-bb-fetch-buglist (last-update)
+  "Return the buglist at org-sync-base-url."
+  (let* ((url (concat org-sync-base-url "/issues"))
+         (res (org-sync-bb-request "GET" url))
          (code (car res))
          (json (cdr res))
-         (title (concat "Bugs of " (os-bb-repo-name url))))
+         (title (concat "Bugs of " (org-sync-bb-repo-name url))))
 
     `(:title ,title
-             :url ,os-base-url
-             :bugs ,(mapcar 'os-bb-json-to-bug (cdr (assoc 'issues json))))))
+             :url ,org-sync-base-url
+             :bugs ,(mapcar 'org-sync-bb-json-to-bug (cdr (assoc 'issues json))))))
 
 
-(defun os-bb-json-to-bug (json)
+(defun org-sync-bb-json-to-bug (json)
   "Return JSON as a bug."
   (cl-flet* ((va (key alist) (cdr (assoc key alist)))
              (v (key) (va key json)))
@@ -210,8 +210,8 @@ decoded response in JSON."
            (priority (v 'priority))
            (title (v 'title))
            (desc (v 'content))
-           (ctime (os-parse-date (v 'utc_created_on)))
-           (mtime (os-parse-date (v 'utc_last_updated))))
+           (ctime (org-sync-parse-date (v 'utc_created_on)))
+           (mtime (org-sync-parse-date (v 'utc_last_updated))))
 
       `(:id ,id
             :priority ,priority
@@ -227,35 +227,35 @@ decoded response in JSON."
             :milestone ,milestone))))
 
 ;; override
-(defun os-bb-send-buglist (buglist)
+(defun org-sync-bb-send-buglist (buglist)
   "Send a BUGLIST on the bugtracker and return new bugs."
-  (let* ((new-url (concat os-base-url "/issues"))
+  (let* ((new-url (concat org-sync-base-url "/issues"))
          (new-bugs))
-    (dolist (b (os-get-prop :bugs buglist))
-      (let* ((id (os-get-prop :id b))
-             (data (os-bb-post-encode (os-bb-bug-to-form b)))
+    (dolist (b (org-sync-get-prop :bugs buglist))
+      (let* ((id (org-sync-get-prop :id b))
+             (data (org-sync-bb-post-encode (org-sync-bb-bug-to-form b)))
              (modif-url (format "%s/%d/" new-url (or id 0)))
              res)
         (cond
          ;; new bug
          ((null id)
-          (setq res (os-bb-request "POST" new-url data))
+          (setq res (org-sync-bb-request "POST" new-url data))
           (when (/= (car res) 200)
-            (error "Can't create new bug \"%s\"" (os-get-prop :title b)))
-          (push (os-bb-json-to-bug (cdr res)) new-bugs))
+            (error "Can't create new bug \"%s\"" (org-sync-get-prop :title b)))
+          (push (org-sync-bb-json-to-bug (cdr res)) new-bugs))
 
          ;; delete bug
-         ((os-get-prop :delete b)
-          (setq res (os-bb-request "DELETE" modif-url))
+         ((org-sync-get-prop :delete b)
+          (setq res (org-sync-bb-request "DELETE" modif-url))
           (when (not (member (car res) '(404 204)))
             (error "Can't delete bug #%d" id)))
 
          ;; update bug
          (t
-          (setq res (os-bb-request "PUT" modif-url data))
+          (setq res (org-sync-bb-request "PUT" modif-url data))
           (when (/= (car res) 200)
             (error "Can't update bug #%id" id))
-          (push (os-bb-json-to-bug (cdr res)) new-bugs)))))
+          (push (org-sync-bb-json-to-bug (cdr res)) new-bugs)))))
     `(:bugs ,new-bugs)))
 
 (provide 'org-sync-bb)

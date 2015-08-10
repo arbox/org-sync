@@ -1,4 +1,4 @@
-;;; os.el --- Synchronize Org documents with external services
+;;; org-sync.el --- Synchronize Org documents with external services
 
 ;; Copyright (C) 2012  Aurelien Aptel
 ;; Copyright (C) 2015-      Andrei Beliankou

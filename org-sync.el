@@ -7,6 +7,7 @@
 ;; Keywords: org, synchronization
 ;; Homepage: http://orgmode.org/worg/org-contrib/gsoc2012/student-projects/org-sync
 ;; Package-Requires: ((cl-lib "0.5"))
+;; Version: 0.0.1
 
 ;;
 ;; This program is free software; you can redistribute it and/or modify

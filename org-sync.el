@@ -880,47 +880,47 @@ sync again.\n\n")
 
         ;; handle buglist with the approriate backend
         (org-sync-with-backend url
-                               (let* ((cache (org-sync-get-cache org-sync-base-url))
-                                      (last-fetch (org-sync-get-prop :date-cache cache))
-                                      (local-diff (org-sync-buglist-diff cache local))
-                                      remote remote-diff merged merged-diff)
+         (let* ((cache (org-sync-get-cache org-sync-base-url))
+                (last-fetch (org-sync-get-prop :date-cache cache))
+                (local-diff (org-sync-buglist-diff cache local))
+                remote remote-diff merged merged-diff)
 
-                                 ;; fetch remote buglist
-                                 (if last-fetch
-                                     ;; make a partial fetch and apply it to cache if the backend
-                                     ;; supports it
-                                     (let* ((partial-fetch (org-sync--fetch-buglist last-fetch)))
-                                       (if (org-sync-get-prop :since partial-fetch)
-                                           (setq remote (org-sync-update-buglist cache partial-fetch))
-                                         (setq remote partial-fetch)))
-                                   (setq remote (org-sync--fetch-buglist nil)))
-                                 ;; at this point remote is the full remote buglist
+           ;; fetch remote buglist
+           (if last-fetch
+               ;; make a partial fetch and apply it to cache if the backend
+               ;; supports it
+               (let* ((partial-fetch (org-sync--fetch-buglist last-fetch)))
+                 (if (org-sync-get-prop :since partial-fetch)
+                     (setq remote (org-sync-update-buglist cache partial-fetch))
+                   (setq remote partial-fetch)))
+             (setq remote (org-sync--fetch-buglist nil)))
+           ;; at this point remote is the full remote buglist
 
-                                 (setq remote-diff (org-sync-buglist-diff cache remote))
-                                 (setq merged-diff (org-sync-merge-diff local-diff remote-diff))
+           (setq remote-diff (org-sync-buglist-diff cache remote))
+           (setq merged-diff (org-sync-merge-diff local-diff remote-diff))
 
-                                 ;; filter according to org-sync-props
-                                 (org-sync-filter-diff merged-diff)
+           ;; filter according to org-sync-props
+           (org-sync-filter-diff merged-diff)
 
-                                 (setq merged (org-sync-update-buglist local merged-diff))
+           (setq merged (org-sync-update-buglist local merged-diff))
 
-                                 ;; if merged-diff has duplicate bugs, there's a conflict
-                                 (let ((dups (org-sync-buglist-dups merged-diff)))
-                                   (if dups
-                                       (progn
-                                         (message "Synchronization failed, manual merge needed.")
-                                         (org-sync-show-conflict merged-diff org-sync-base-url))
+           ;; if merged-diff has duplicate bugs, there's a conflict
+           (let ((dups (org-sync-buglist-dups merged-diff)))
+             (if dups
+                 (progn
+                   (message "Synchronization failed, manual merge needed.")
+                   (org-sync-show-conflict merged-diff org-sync-base-url))
 
-                                     ;; else update buffer and cache
-                                     (setq merged
-                                           (org-sync-remove-unidentified-bug
-                                            (org-sync-update-buglist merged (org-sync--send-buglist merged-diff))))
-                                     (org-sync-set-prop :date-cache (current-time) merged)
-                                     (org-sync-set-cache org-sync-base-url merged)
-                                     (message "Synchronization complete.")))
+               ;; else update buffer and cache
+               (setq merged
+                     (org-sync-remove-unidentified-bug
+                      (org-sync-update-buglist merged (org-sync--send-buglist merged-diff))))
+               (org-sync-set-prop :date-cache (current-time) merged)
+               (org-sync-set-cache org-sync-base-url merged)
+               (message "Synchronization complete.")))
 
-                                 ;; replace headlines in local-doc
-                                 (org-sync-replace-headline-by-buglist headline merged)))))
+           ;; replace headlines in local-doc
+           (org-sync-replace-headline-by-buglist headline merged)))))
 
     (org-sync-add-keyword local-doc "TODO" "OPEN | CLOSED")
 

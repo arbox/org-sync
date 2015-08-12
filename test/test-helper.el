@@ -29,7 +29,6 @@
             (:exclude "*-test.el")
             (:report-file "/tmp/undercover-report.json"))
 
-(require 'omd)
 (require 'org-sync)
 
 (provide 'test-helper)

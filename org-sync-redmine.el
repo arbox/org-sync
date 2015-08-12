@@ -1,4 +1,4 @@
-;;; os-rmine.el --- Redmine backend for org-sync.
+;;; org-sync-rmine.el --- Redmine backend for org-sync.
 
 ;; Copyright (C) 2012  Aurelien Aptel
 ;;
@@ -37,19 +37,19 @@
 (defvar url-http-end-of-headers)
 (defvar url-http-response-status)
 
-(defvar os-rmine-backend
-  '((base-url      . os-rmine-base-url)
-    (fetch-buglist . os-rmine-fetch-buglist)
-    (send-buglist  . os-rmine-send-buglist))
+(defvar org-sync-rmine-backend
+  '((base-url      . org-sync-rmine-base-url)
+    (fetch-buglist . org-sync-rmine-fetch-buglist)
+    (send-buglist  . org-sync-rmine-send-buglist))
   "Redmine backend.")
 
-(defvar os-rmine-auth nil
+(defvar org-sync-rmine-auth nil
   "Redmine login (\"user\" . \"pwd\")")
 
-(defvar os-rmine-project-id nil
+(defvar org-sync-rmine-project-id nil
   "Project id of current buglist.")
 
-(defconst os-rmine-date-regex
+(defconst org-sync-rmine-date-regex
   (rx
    (seq
     (group (repeat 4 digit)) "/"
@@ -66,25 +66,25 @@
            (repeat 2 digit))))
   "Regex to parse date returned by redmine.")
 
-(defun os-rmine-fetch-meta ()
-  "Set `os-rmine-project-id' for now."
-  (let* ((res (os-rmine-request "GET" (concat os-base-url ".json")))
+(defun org-sync-rmine-fetch-meta ()
+  "Set `org-sync-rmine-project-id' for now."
+  (let* ((res (org-sync-rmine-request "GET" (concat org-sync-base-url ".json")))
          (code (car res))
          (json (cdr res)))
     (when (/= code 200)
-      (error "Can't fetch data from %s, wrong url?" os-base-url))
-    (setq os-rmine-project-id (cdr (assoc 'id (cdr (assoc 'project json)))))))
+      (error "Can't fetch data from %s, wrong url?" org-sync-base-url))
+    (setq org-sync-rmine-project-id (cdr (assoc 'id (cdr (assoc 'project json)))))))
 
-(defun os-rmine-parse-date (date)
+(defun org-sync-rmine-parse-date (date)
   "Return time object of DATE."
-  (when (string-match os-rmine-date-regex date)
-    (os-parse-date (concat (match-string 1 date) "-"
+  (when (string-match org-sync-rmine-date-regex date)
+    (org-sync-parse-date (concat (match-string 1 date) "-"
                            (match-string 2 date) "-"
                            (match-string 3 date) "T"
                            (match-string 4 date)
                            (match-string 5 date)))))
 
-(defun os-rmine-request (method url &optional data)
+(defun org-sync-rmine-request (method url &optional data)
   "Send HTTP request at URL using METHOD with DATA.
 AUTH is a cons (\"user\" . \"pwd\").  Return the server
 decoded response in JSON."
@@ -93,11 +93,11 @@ decoded response in JSON."
          (url-request-extra-headers
           (when data
             '(("Content-Type" . "application/json"))))
-         (auth os-rmine-auth)
+         (auth org-sync-rmine-auth)
          (buf))
 
     (when (stringp auth)
-      (setq url (os-url-param url `(("key" . ,auth)))))
+      (setq url (org-sync-url-param url `(("key" . ,auth)))))
 
     (message "%s %s %s" method url (prin1-to-string data))
     (setq buf (url-retrieve-synchronously url))
@@ -108,7 +108,7 @@ decoded response in JSON."
         (kill-buffer)))))
 
 ;; override
-(defun os-rmine-base-url (url)
+(defun org-sync-rmine-base-url (url)
   "Return base URL."
   ;; if no url type, try http
   (when (not (string-match "^https?://" url))
@@ -120,12 +120,12 @@ decoded response in JSON."
               (url-host purl)
               (match-string 0 (url-filename purl))))))
 
-(defun os-rmine-repo-name (url)
+(defun org-sync-rmine-repo-name (url)
   "Return repo name at URL."
   (when (string-match "projects/\\([^/]+\\)" url)
     (match-string 1 url)))
 
-(defun os-rmine-json-to-bug (json)
+(defun org-sync-rmine-json-to-bug (json)
   "Return JSON as a bug."
   (cl-flet* ((va (key alist) (cdr (assoc key alist)))
              (v (key) (va key json)))
@@ -139,8 +139,8 @@ decoded response in JSON."
            (priority (va 'name (v 'priority)))
            (title (v 'subject))
            (desc (v 'description))
-           (ctime (os-rmine-parse-date (v 'created_on)))
-           (mtime (os-rmine-parse-date (v 'updated_on))))
+           (ctime (org-sync-rmine-parse-date (v 'created_on)))
+           (mtime (org-sync-rmine-parse-date (v 'updated_on))))
 
       `(:id ,id
             :priority ,priority
@@ -150,71 +150,71 @@ decoded response in JSON."
             :date-creation ,ctime
             :date-modification ,mtime))))
 
-(defun os-rmine-fetch-buglist (last-update)
-  "Return the buglist at os-base-url."
-  (let* ((url (concat os-base-url "/issues.json"))
-         (res (os-rmine-request "GET" url))
+(defun org-sync-rmine-fetch-buglist (last-update)
+  "Return the buglist at org-sync-base-url."
+  (let* ((url (concat org-sync-base-url "/issues.json"))
+         (res (org-sync-rmine-request "GET" url))
          (code (car res))
          (json (cdr res))
-         (title (concat "Bugs of " (os-rmine-repo-name url))))
+         (title (concat "Issues of " (org-sync-rmine-repo-name url))))
 
     `(:title ,title
-             :url ,os-base-url
-             :bugs ,(mapcar 'os-rmine-json-to-bug (cdr (assoc 'issues json))))))
+             :url ,org-sync-base-url
+             :bugs ,(mapcar 'org-sync-rmine-json-to-bug (cdr (assoc 'issues json))))))
 
-(defun os-rmine-bug-to-json (bug)
+(defun org-sync-rmine-bug-to-json (bug)
   (json-encode
    `((issue .
-            ((subject     . ,(os-get-prop :title bug))
-             (description . ,(os-get-prop :desc bug)))))))
+            ((subject     . ,(org-sync-get-prop :title bug))
+             (description . ,(org-sync-get-prop :desc bug)))))))
 
 
-;; (defun os-rmine-code-success-p (code)
+;; (defun org-sync-rmine-code-success-p (code)
 ;;   "Return non-nil if HTTP CODE is a success code."
 ;;   (and (<= 200 code) (< code 300)))
 
-(defun os-rmine-send-buglist (buglist)
+(defun org-sync-rmine-send-buglist (buglist)
     "Send a BUGLIST on the bugtracker and return new bugs."
-    (let* ((new-url (concat os-base-url "/issues.json"))
+    (let* ((new-url (concat org-sync-base-url "/issues.json"))
            (root-url (replace-regexp-in-string "/projects/.+"
-                                               "" os-base-url))
+                                               "" org-sync-base-url))
            new-bugs)
 
-      (os-rmine-fetch-meta)
+      (org-sync-rmine-fetch-meta)
 
-      (dolist (b (os-get-prop :bugs buglist))
-        (let* ((id (os-get-prop :id b))
-               (data (os-rmine-bug-to-json b))
+      (dolist (b (org-sync-get-prop :bugs buglist))
+        (let* ((id (org-sync-get-prop :id b))
+               (data (org-sync-rmine-bug-to-json b))
                (modif-url (format "%s/issues/%d.json" root-url (or id 0)))
                res)
           (cond
            ;; new bug
            ((null id)
-            (setq res (os-rmine-request "POST" new-url data))
+            (setq res (org-sync-rmine-request "POST" new-url data))
             (when (/= (car res) 201)
-              (error "Can't create new bug \"%s\"" (os-get-prop :title b)))
-            (push (os-rmine-json-to-bug
+              (error "Can't create new bug \"%s\"" (org-sync-get-prop :title b)))
+            (push (org-sync-rmine-json-to-bug
                    (cdr (assoc 'issue (cdr res))))
                   new-bugs))
 
            ;; delete bug
-           ((os-get-prop :delete b)
-            (setq res (os-rmine-request "DELETE" modif-url))
+           ((org-sync-get-prop :delete b)
+            (setq res (org-sync-rmine-request "DELETE" modif-url))
             (when (not (member (car res) '(404 204)))
               (error "Can't delete bug #%d" id)))
 
            ;; update bug
            (t
-            (setq res (os-rmine-request "PUT" modif-url data))
+            (setq res (org-sync-rmine-request "PUT" modif-url data))
             (when (/= (car res) 200)
               (error "Can't update bug #%d" id))
 
             ;; fetch the new version since redmine doesn't send it
-            (setq res (os-rmine-request "GET" modif-url))
+            (setq res (org-sync-rmine-request "GET" modif-url))
             (when (/= (car res) 200)
               (error "Can't update bug #%d" id))
 
-            (push (os-rmine-json-to-bug
+            (push (org-sync-rmine-json-to-bug
                    (cdr (assoc 'issue (cdr res))))
                   new-bugs)))))
       `(:bugs ,new-bugs)))

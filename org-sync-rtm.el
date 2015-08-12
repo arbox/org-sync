@@ -1,4 +1,4 @@
-;;; os-rtm.el --- Remember The Milk backend for org-sync.
+;;; org-sync-rtm.el --- Remember The Milk backend for org-sync.
 
 ;; Copyright (C) 2012  Aurelien Aptel
 ;;
@@ -34,62 +34,62 @@
 (require 'json)
 (require 'url)
 
-(defvar os-rtm-api-key "e9b28a9ac67f1bffc3dab1bd94dab722")
-(defvar os-rtm-shared-secret "caef7e509a8dcd82")
-(defvar os-rtm-token nil)
+(defvar org-sync-rtm-api-key "e9b28a9ac67f1bffc3dab1bd94dab722")
+(defvar org-sync-rtm-shared-secret "caef7e509a8dcd82")
+(defvar org-sync-rtm-token nil)
 
 (defvar url-http-end-of-headers)
 (defvar url-http-response-status)
 
-(defun os-rtm-call (method &rest args)
+(defun org-sync-rtm-call (method &rest args)
   "Call API METHOD and return result."
   (let* ((param `(("method" . ,method)
                   ,@args)))
-    (os-rtm-request "GET" "http://api.rememberthemilk.com/services/rest/" param nil 'sign)))
+    (org-sync-rtm-request "GET" "http://api.rememberthemilk.com/services/rest/" param nil 'sign)))
 
-(defvar os-rtm-backend
-  '((base-url      . os-rtm-base-url)
-    (fetch-buglist . os-rtm-fetch-buglist)
-    (send-buglist  . os-rtm-send-buglist))
+(defvar org-sync-rtm-backend
+  '((base-url      . org-sync-rtm-base-url)
+    (fetch-buglist . org-sync-rtm-fetch-buglist)
+    (send-buglist  . org-sync-rtm-send-buglist))
   "Bitbucket backend.")
 
-(defun os-rtm-base-url (url)
+(defun org-sync-rtm-base-url (url)
   "Return base URL. Not used with RTM."
   url)
 
-(defun os-rtm-filter-tasks (response)
+(defun org-sync-rtm-filter-tasks (response)
   "Return all the real task from RTM rtm.tasks.getList RESPONSE."
   (let (final)
     (mapc (lambda (e)
             (when (assoc 'taskseries e)
               (mapc (lambda (task-series)
                       (push task-series final))
-                    (os-getalist e 'taskseries))))
-          (os-getalist (cdr response) 'rsp 'tasks 'list))
+                    (org-sync-getalist e 'taskseries))))
+          (org-sync-getalist (cdr response) 'rsp 'tasks 'list))
     final))
 
-(defun os-rtm-fetch-buglist (last-update)
-  (unless os-rtm-token
-    (os-rtm-auth))
+(defun org-sync-rtm-fetch-buglist (last-update)
+  (unless org-sync-rtm-token
+    (org-sync-rtm-auth))
   (let ((bl
-         (mapcar 'os-rtm-task-to-bug
-                 (os-rtm-filter-tasks (os-rtm-call "rtm.tasks.getList")))))
+         (mapcar 'org-sync-rtm-task-to-bug
+                 (org-sync-rtm-filter-tasks (org-sync-rtm-call "rtm.tasks.getList")))))
     `(:title "Tasks"
-             :url ,os-base-url
+             :url ,org-sync-base-url
              :bugs ,bl)))
 
-(defun os-rtm-task-to-bug (task)
+(defun org-sync-rtm-task-to-bug (task)
   "Return TASK as a bug."
-  (cl-flet ((v (&rest key) (apply 'os-getalist task key)))
+  (cl-flet ((v (&rest key) (apply 'org-sync-getalist task key)))
     (let* ((id (string-to-number (v 'id)))
            (title (v 'name))
            (status (if (string= (v 'task 'completed) "")
                        'open
                      'closed))
            (priority (v 'task 'priority))
-           (ctime (os-parse-date (v 'created)))
-           (mtime (os-parse-date (v 'modified)))
-           (dtime (os-parse-date (v 'task 'due))))
+           (ctime (org-sync-parse-date (v 'created)))
+           (mtime (org-sync-parse-date (v 'modified)))
+           (dtime (org-sync-parse-date (v 'task 'due))))
       `(:id ,id
             :title ,title
             :status ,status
@@ -99,21 +99,21 @@
             :date-deadline ,dtime))))
 
 
-(defun os-rtm-request (method url &optional param data sign)
+(defun org-sync-rtm-request (method url &optional param data sign)
   "Send HTTP request at URL using METHOD with DATA."
 
   (unless  (string-match "/auth/" url)
     (push (cons "format" "json") param))
 
-  (when os-rtm-token
-    (push (cons "auth_token" os-rtm-token) param))
+  (when org-sync-rtm-token
+    (push (cons "auth_token" org-sync-rtm-token) param))
 
-  (push `("api_key" . ,os-rtm-api-key) param)
+  (push `("api_key" . ,org-sync-rtm-api-key) param)
 
   (when sign
-    (push `("api_sig" . ,(os-rtm-sign param)) param))
+    (push `("api_sig" . ,(org-sync-rtm-sign param)) param))
 
-  (setq url (os-url-param url param))
+  (setq url (org-sync-url-param url param))
 
   (let* ((url-request-method method)
          (url-request-data data)
@@ -131,29 +131,29 @@
           (cons url-http-response-status (ignore-errors (json-read)))
         (kill-buffer)))))
 
-(defun os-rtm-auth ()
+(defun org-sync-rtm-auth ()
   "Return the URL to grant access to the user account."
   ;; http://www.rememberthemilk.com/services/auth/?api_key=abc123&perms=delete
 
-  (let* ((res (os-rtm-call "rtm.auth.getFrob"))
+  (let* ((res (org-sync-rtm-call "rtm.auth.getFrob"))
          (frob (cdr (assoc 'frob (cl-cdadr res))))
-         (param `(("api_key" . ,os-rtm-api-key)
+         (param `(("api_key" . ,org-sync-rtm-api-key)
                   ("perms"   . "delete")
                   ("frob"    . ,frob)))
          url)
 
     ;; add signature
-    (push `("api_sig" . ,(os-rtm-sign param)) param)
-    (setq url (os-url-param "http://www.rememberthemilk.com/services/auth/" param))
+    (push `("api_sig" . ,(org-sync-rtm-sign param)) param)
+    (setq url (org-sync-url-param "http://www.rememberthemilk.com/services/auth/" param))
     (browse-url url)
     (when (yes-or-no-p "Application accepted? ")
       (setq
-       os-rtm-token
-       (os-getalist
-        (cdr (os-rtm-call "rtm.auth.getToken" `("frob" . ,frob)))
+       org-sync-rtm-token
+       (org-sync-getalist
+        (cdr (org-sync-rtm-call "rtm.auth.getToken" `("frob" . ,frob)))
         'rsp 'auth 'token)))))
 
-(defun os-rtm-sign (param-alist)
+(defun org-sync-rtm-sign (param-alist)
   "Return the signature for the PARAM-ALIST request."
   (let ((param (copy-tree param-alist))
         sign)
@@ -166,7 +166,7 @@
     (md5
      (message
       (concat
-       os-rtm-shared-secret
+       org-sync-rtm-shared-secret
        ;; concat key&value
        (mapconcat (lambda (x)
                     (concat (car x) (cdr x)))

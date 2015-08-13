@@ -1,12 +1,13 @@
-;;; org-sync.el --- Synchronize Org documents with external services
+;;; org-sync.el --- Synchronize Org documents with External Issue Trackers
 
 ;; Copyright (C) 2012  Aurelien Aptel
-;; Copyright (C) 2015-      Andrei Beliankou
 ;;
 ;; Author: Aurelien Aptel <aurelien dot aptel at gmail dot com>
-;; Keywords: org, synchronization, issues
-;; Homepage: http://orgmode.org/worg/org-contrib/gsoc2012/student-projects/org-sync
-;; Package-Requires: ((cl-lib "0.5"))
+;; Maintainer: Andrei Beliankou <arbox@yandex.ru>
+;; Created: 2012-05-01
+;; Keywords: org, synchronization, issue tracking, GitHub, Redmine
+;; Homepage: https://github.com/arbox/org-sync
+;; Package-Requires: ((cl-lib "0.5") (org "8.2") (emacs "24"))
 ;; Version: 0.0.1
 
 ;;
@@ -145,6 +146,10 @@
 ;; string is then inserted in the buffer.  See `org-sync-buglist-to-element'
 ;; and `org-sync-bug-to-element'.
 
+;;; Change Log:
+;; Version 0.0.1
+
+;;; Code:
 (require 'cl-lib)
 (require 'org)
 (require 'org-element)

@@ -1,4 +1,4 @@
-;;; omd-test.el ---                                  -*- lexical-binding: t; -*-
+;;; dummy-test.el ---                                  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2015  Antoine Romain Dumont
 
@@ -24,23 +24,13 @@
 
 ;;; Code:
 
-(require 'dash-functional)
-
-(ert-deftest test-omd-rand ()
-  (should
-   (let ((min 1)
-         (max 100))
-     (->> (number-sequence 1 10)
-          (-map (lambda (_) (omd-rand min max)))
-          (--every? (and (<= min it) (< it max)))))))
-
-(ert-deftest test-omd-random-word ()
-  (let ((seq-length (number-sequence 1 10)))
-    (->> seq-length
-         (-map (-compose 'length 'omd-random-word))
-         (equal seq-length))))
+(ert-deftest test-basic ()
+  (should (eq 2
+              (+ 1 1)))
+  (should-not (eq 3
+                  (+ 1 1))))
 
 ;; ...
 
-(provide 'omd-test)
-;;; omd-test.el ends here
+(provide 'template-test)
+;;; dummy-test.el ends here

@@ -26,7 +26,7 @@ need. You can add this to your .emacs:
 ``` emacs-lisp
 (add-to-list 'load-path "path/to/org-sync")
 (mapc 'load
-      '("org-sync" "org-sync-bb" "org-sync-github" "org-sync-rmine"))
+      '("org-sync" "org-sync-bb" "org-sync-github" "org-sync-redmine"))
 ```
 
 Make sure you have `org-element.el` (it's part of recent org-mode >=). If you

@@ -165,7 +165,7 @@
     ("bitbucket.org/[^/]+/[^/]+"             . org-sync-bb-backend)
     ("/projects/[^/]+"                       . org-sync-rmine-backend)
     ("rememberthemilk.com"                   . org-sync-rtm-backend))
-  "Alist of url patterns vs corresponding org-sync backend.")
+  "Alist of url patterns and corresponding org-sync backends.")
 
 (defvar org-sync-cache-file (concat user-emacs-directory "org-sync-cache")
   "Path to Org-sync cache file.")
@@ -175,7 +175,7 @@
 Maps URLs to buglist cache.")
 
 (defvar org-sync-conflict-buffer "*Org-sync conflict*"
-  "Name of the conflict buffer")
+  "Name of the conflict buffer.")
 
 (defvar org-sync-props nil
   "List of property to sync or nil to sync everything.")
@@ -449,7 +449,7 @@ Return ELEM if it was added, nil otherwise."
    (stringp (org-sync-headline-url elem))))
 
 (defun org-sync-property-drawer-to-alist (drawer)
-  "Return the alist of all key value pairs"
+  "Return the alist of all key value pairs."
   (org-element-map drawer
                    'node-property
                    (lambda (x) (cons (org-element-property :key x)

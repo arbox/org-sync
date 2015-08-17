@@ -4,6 +4,9 @@
 
 # Org-sync: Synchronize Org-mode Files with Bug Tracking systems
 
+*CAUTION* This package is under a heavy reconstration, please be patient.
+Feel free to contribute!
+
 Org-sync is a tool to synchronize online bugtrackers with org documents.
 It is made for relatively small/medium projects: I find Org documents are not
 really suited for handling large bug lists.
@@ -37,8 +40,8 @@ need. You can add this to your `.emacs`:
 
 ## Tutorial
 
-Next, open a new org-mode buffer and run `M-x org-sync-import`.  It prompts you for
-an URL.  You can try my Github test repo: `github.com/arbox/org-sync-test`.
+Next, open a new org-mode buffer and run `M-x org-sync-import`.  It prompts you
+for an URL.  You can try my Github test repo: `github.com/arbox/org-sync-test`.
 Org-sync should import the issues from the repo.
 *Note*: This is just a test repo, do not use it to report actual bugs.
 

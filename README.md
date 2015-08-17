@@ -6,22 +6,28 @@
 
 Org-sync is a tool to synchronize online bugtrackers with org documents.
 It is made for relatively small/medium projects: I find Org documents are not
-really suited for handling large bug lists. The official homepage of the project
-is http://orgmode.org/worg/org-contrib/gsoc2012/student-projects/org-sync/
-on Worg. You can find the official git repo and contact informations there.
+really suited for handling large bug lists.
+
+`Org-sync` was developed during the Google Summer of Code 2012, the original project
+page can be found on Worg:
+http://orgmode.org/worg/org-contrib/gsoc2012/student-projects/org-sync/.
 
 ## Installation
 
-### melpa
+The ordinal way to install `Org-sync` is to issue the command:
 
 ```
 M-x package-install RET org-sync RET
 ```
 
-### from source
+You could use the bleeding edge version from the repository:
 
-Put the org-sync directory in your load-path and load the org-sync backend you
-need. You can add this to your .emacs:
+```
+git clone https://github.com/arbox/org-sync.git
+```
+
+Put the `org-sync` directory in your load-path and load the `org-sync` backend you
+need. You can add this to your `.emacs`:
 
 ``` emacs-lisp
 (add-to-list 'load-path "path/to/org-sync")
@@ -29,19 +35,12 @@ need. You can add this to your .emacs:
       '("org-sync" "org-sync-bb" "org-sync-github" "org-sync-redmine"))
 ```
 
-Make sure you have `org-element.el` (it's part of recent org-mode >=). If you
-don't have it you can download a recent version in the org-sync directory:
-
-``` sh
-wget -O org-element.el 'http://orgmode.org/w/?p=org-mode.git;a=blob_plain;f=lisp/org-element.el'
-```
-
 ## Tutorial
 
 Next, open a new org-mode buffer and run `M-x org-sync-import`.  It prompts you for
 an URL.  You can try my Github test repo: `github.com/arbox/org-sync-test`.
-Org-sync should import the issues from the repo. *Note*: This is just
-a test repo, do not use it to report actual bugs.
+Org-sync should import the issues from the repo.
+*Note*: This is just a test repo, do not use it to report actual bugs.
 
 Now, let's try to add a new issue.  First you have to set a
 user/password to be able to modify the issue remotely.

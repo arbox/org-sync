@@ -40,9 +40,12 @@ need. You can add this to your `.emacs`:
 
 ## Tutorial
 
-Next, open a new org-mode buffer and run `M-x org-sync-import`.  It prompts you
+After you have installed `org-sync` you need to import a working project.
+
+First open a new org-mode buffer and run `M-x org-sync-import`.  It prompts you
 for an URL.  You can try my Github test repo: `github.com/arbox/org-sync-test`.
 Org-sync should import the issues from the repo.
+
 *Note*: This is just a test repo, do not use it to report actual bugs.
 
 Now, let's try to add a new issue.  First you have to set a

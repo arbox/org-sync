@@ -2,6 +2,7 @@
 # Adopted from @ardumont:
 # https://github.com/org-trello/org-trello/blob/master/.travis.yml
 language: emacs-lisp
+sudo: required
 env:
   global:
     - PATH=$HOME/.cask/bin:$HOME/.evm/bin:$PATH

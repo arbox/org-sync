@@ -180,6 +180,9 @@ Maps URLs to buglist cache.")
 (defvar org-sync-props nil
   "List of property to sync or nil to sync everything.")
 
+(defvar org-sync-id-in-headline nil
+  "If true, include the ID in a bug's headline.")
+
 (defun org-sync-action-fun (action)
   "Return current backend ACTION function or nil."
   (unless (or (null action) (null org-sync-backend))
@@ -399,6 +402,7 @@ Return ELEM if it was added, nil otherwise."
   (let* ((skip '(:title :status :desc :old-bug
                         :date-deadline :date-creation :date-modification))
          (title (org-sync-get-prop :title b))
+         (id (org-sync-get-prop :id b))
          (dtime (org-sync-get-prop :date-deadline b))
          (ctime (org-sync-get-prop :date-creation b))
          (mtime (org-sync-get-prop :date-modification b))
@@ -422,6 +426,8 @@ Return ELEM if it was added, nil otherwise."
 
       `(headline
         (:title ,(concat
+                  (when (and id org-sync-id-in-headline)
+                    (format "#%d " id))
                   title
                   (when dtime
                     (concat
@@ -531,6 +537,8 @@ Return ELEM if it was added, nil otherwise."
     ;; else ignore DEADLINE tag in paragraph
     (when dtime
       (setq title (replace-regexp-in-string " DEADLINE: " "" title)))
+    (when org-sync-id-in-headline
+      (setq title (replace-regexp-in-string "^#[0-9]+ " "" title)))
 
     (setq bug (list
                :status status

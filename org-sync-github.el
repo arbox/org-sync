@@ -49,6 +49,9 @@
 (defvar org-sync-github-auth nil
   "Github login (\"user\" . \"pwd\")")
 
+(defvar org-sync-github-assignee nil
+  "Assignee whose issues to sync.")
+
 (defun org-sync-github-fetch-labels ()
   "Return list of labels at org-sync-base-url."
   (let* ((url (concat org-sync-base-url "/labels"))
@@ -97,7 +100,9 @@ Append new tags in EXISTING-TAGS by side effects."
   "Return the buglist at org-sync-base-url."
   (let* ((since (when last-update
                   (format "&since=%s" (org-sync-github-time-to-string last-update))))
-         (url (concat org-sync-base-url "/issues?per_page=100" since))
+         (assignee (when org-sync-github-assignee
+                     (concat "&assignee=" org-sync-github-assignee)))
+         (url (concat org-sync-base-url "/issues?per_page=100" since assignee))
          (json (vconcat (org-sync-github-fetch-json url)
                         (org-sync-github-fetch-json (concat url "&state=closed"))))
          (title (concat "Issues of " (org-sync-github-repo-name url))))

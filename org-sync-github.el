@@ -23,7 +23,7 @@
 ;;
 ;;; Commentary:
 ;;
-;; This package implements a backend for org-sync to synchnonize
+;; This package implements a backend for org-sync to synchronize
 ;; issues from a github tracker with an org-mode buffer.  Read
 ;; Org-sync documentation for more information about it.
 ;;

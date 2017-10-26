@@ -23,7 +23,7 @@
 ;;
 ;;; Commentary:
 ;;
-;; This package implements a backend for org-sync to synchnonize
+;; This package implements a backend for org-sync to synchronize
 ;; issues from a bitbucket repo with an org-mode buffer.  Read
 ;; Org-sync documentation for more information about it.
 ;;

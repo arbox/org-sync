@@ -106,8 +106,8 @@
        '(nil))))
   ;;brute force update bugs
   ;;TODO be smarter and only show updated bugs
-  (org-sync-gitlab-fetch-bugs (org-sync-get-prop :since
-						 buglist))
+  `(:bugs ,(org-sync-gitlab-fetch-bugs (org-sync-get-prop :since
+					       buglist)))
   )
 
 

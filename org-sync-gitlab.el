@@ -68,6 +68,26 @@
   ;;TODO impliment org-sync-gitlab-send-buglist
   (nil))
 
+(defun org-sync-gitlab-request (method url &optional data)
+  "Sends HTTP request at URL using METHOD with DATA
+Return a JSON response"
+  (let* ((url-request-method method)
+         (url-request-data data)
+	 (url-request-extra-headers `(( "Private-Token".  ,(org-sync-gitlab-get-auth-token))))
+	 )
+    (message "%s %s %s" method url (prin1-to-string data))
+    (with-current-buffer (url-retrieve-synchronously url)
+      (goto-char url-http-end-of-headers)
+      (prog1 (json-read) (kill-buffer)))))
+
+(defun org-sync-gitlab-get-auth-token ()
+  "Gets the private-token."
+  ;;TODO: prompt the user for auth token
+  (unless  org-sync-gitlab-auth-token
+    (error "Please set org-sync-gitlab-auth-token"))
+  org-sync-gitlab-auth-token
+  )
+
 (provide 'org-sync-gitlab)
 ;;; org-sync-gitlab ends here
 

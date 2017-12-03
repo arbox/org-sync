@@ -43,11 +43,18 @@
     (send-buglist  . org-sync-gitlab-send-buglist))
   "Gitlab backend.")
 
+(defvar org-sync-gitlab-domain
+  "gitlab.com"
+  "The domain for gitlab.")
+
 ;; override
 (defun org-sync-gitlab-base-url (url)
   "Return base URL."
   ;;TODO impliment org-sync-gitlab-base-url
-  (nil))
+  (string-match (concat  org-sync-gitlab-domain "/\\([^/]+\\)/\\([^/]+\\)/?$")  url)
+  (concat "https://" org-sync-gitlab-domain "/api/v4/projects/"
+           (match-string 1 url) "%2F" (match-string 2 url) "/" ))
+
 
 ;; override
 (defun org-sync-gitlab-fetch-buglist (last-update)

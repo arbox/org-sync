@@ -64,16 +64,21 @@
   "Return the buglist at org-sync-base-url."
   ;;TODO implement SINCE
   ;;TODO get name for task list from url 
-  (let
-      ((jsonBugs (org-sync-gitlab-request
-	      "GET"
-	      (concat (org-sync-gitlab-api-url) "issues?per_page=100"))))
   `(:title "Tasks"
 	   :url ,org-sync-base-url
-	   :bugs ,(mapcar 'org-sync-gitlab-json-to-bug jsonBugs)
-    )))
+	   :bugs ,(org-sync-gitlab-fetch-bugs last-update)
+    ))
 
-
+(defun org-sync-gitlab-fetch-bugs (last-update)
+  "Return the json bugs."
+  ;;TODO impliment LAST-UPDATE
+  (let
+      ((jsonBugs (org-sync-gitlab-request
+		  "GET"
+		  (concat (org-sync-gitlab-api-url) "issues?per_page=100"))))
+    (mapcar 'org-sync-gitlab-json-to-bug jsonBugs)
+    )
+  )
 
 ;; override
 (defun org-sync-gitlab-send-buglist (buglist)

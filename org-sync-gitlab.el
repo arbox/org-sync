@@ -67,7 +67,7 @@
   `(:title "Tasks"
 	   :url ,org-sync-base-url
 	   :bugs ,(org-sync-gitlab-fetch-bugs last-update)
-    ))
+	   ))
 
 (defun org-sync-gitlab-fetch-bugs (last-update)
   "Return the json bugs."
@@ -84,26 +84,35 @@
 (defun org-sync-gitlab-send-buglist (buglist)
   "Send a  BUGLIST to the git lab and return updated BUGLIST."
   ;;TODO impliment org-sync-gitlab-send-buglist
-  (org-sync-get-prop :bugs buglist)
   (dolist (b (org-sync-get-prop :bugs buglist))
-    b
-    (cond
-      ;; new bug (no id)
-      ((null (org-sync-get-prop :id b))
-	       (org-sync-gitlab-request
-		"POST"
-		(concat (org-sync-gitlab-api-url)
-			"/issues/" ;; (org-sync-get-prop :id b )
-			"?title="   (url-hexify-string (org-sync-get-prop :title b))
-			"&description=" (url-hexify-string (org-sync-get-prop :desc b)))))
+    (let*
+	(
+	 (id (org-sync-get-prop :id b))
+	 (escapedTitle (url-hexify-string (org-sync-get-prop :title b)))
+	 (escapedDesc (url-hexify-string (org-sync-get-prop :desc b)))
+	 (issuePath (concat "/issues/" (if id (number-to-string id ))))
+	 )
+      (cond
+       ;; new bug (no id)
+       ((null id)
+	(org-sync-gitlab-request
+	 "POST"
+	 (concat (org-sync-gitlab-api-url)
+		 issuePath
+		 "?title="   escapedTitle
+		 "&description=" escapedDesc)))
 
-      ;; delete bug
-      ((org-sync-get-prop :delete b)
-        '(nil))
+       ;; delete bug
+       ((org-sync-get-prop :delete b)
+	(org-sync-gitlab-request
+	 "DELETE"
+	 (concat (org-sync-gitlab-api-url)
+		 issuePath
+		 )))
 
-      ;; else, modified bug
-      (t
-       '(nil))))
+       ;; else, modified bug
+       (t
+	'(nil)))))
   ;;brute force update bugs
   ;;TODO be smarter and only show updated bugs
   `(:bugs ,(org-sync-gitlab-fetch-bugs (org-sync-get-prop :since
@@ -134,7 +143,13 @@ Return a JSON response"
     (message "%s %s %s" method url (prin1-to-string data))
     (with-current-buffer (url-retrieve-synchronously url)
       (goto-char url-http-end-of-headers)
-      (prog1 (json-read) (kill-buffer)))))
+      (prog1
+	  (if
+	      (not (string-equal method "DELETE" ))
+	      (json-read)
+	    )
+	(kill-buffer)
+	))))
 
 (defun org-sync-gitlab-get-auth-token ()
   "Gets the private-token."
@@ -145,6 +160,6 @@ Return a JSON response"
   )
 
 (provide 'org-sync-gitlab)
-;;; org-sync-gitlab ends here
+ ;;; org-sync-gitlab ends here
 
 

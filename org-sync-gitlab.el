@@ -60,13 +60,31 @@
 (defun org-sync-gitlab-fetch-buglist (last-update)
   "Return the buglist at org-sync-base-url."
   ;;TODO implement org-sync-gitlab-fetch-buglist
-  (nil))
+  (let
+      ((jsonBugs (org-sync-gitlab-request
+	      "GET"
+	      (concat org-sync-base-url "issues?per_page=100"))))
+  `(:title "Tasks"
+	   :url ,org-sync-base-url
+	   :bugs ,(mapcar 'org-sync-gitlab-json-to-bug jsonBugs)
+    )))
+
+
 
 ;; override
 (defun org-sync-gitlab-send-buglist (buglist)
   "Send a  BUGLIST to the bugtracker and return new bugs"
   ;;TODO impliment org-sync-gitlab-send-buglist
-  (nil))
+  nil)
+
+(defun org-sync-gitlab-json-to-bug (data)
+  "Convert the provided Json DATA into a bug."
+  `(
+    :id ,(assoc-default `id  data)
+	:title ,(assoc-default `title data)
+	:status, (if (string= (assoc-default `state data) "opened") 'open 'closed)
+	:desc, (assoc-default `description data)))
+
 
 (defun org-sync-gitlab-request (method url &optional data)
   "Sends HTTP request at URL using METHOD with DATA

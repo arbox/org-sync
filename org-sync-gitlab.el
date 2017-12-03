@@ -89,7 +89,7 @@
 (defun org-sync-gitlab-json-to-bug (data)
   "Convert the provided Json DATA into a bug."
   `(
-    :id ,(assoc-default `id  data)
+    :id ,(assoc-default `iid  data) ;; iid is the internal issue id, used for updating
 	:title ,(assoc-default `title data)
 	:status, (if (string= (assoc-default `state data) "opened") 'open 'closed)
 	:date-creation ,(org-sync-parse-date (assoc-default 'created_at data))

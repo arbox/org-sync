@@ -50,7 +50,6 @@
 ;; override
 (defun org-sync-gitlab-base-url (url)
   "Return base URL."
-  ;;TODO impliment org-sync-gitlab-base-url
   (string-match (concat  org-sync-gitlab-domain "/\\([^/]+\\)/\\([^/]+\\)/?$")  url)
   (concat "https://" org-sync-gitlab-domain "/api/v4/projects/"
            (match-string 1 url) "%2F" (match-string 2 url) "/" ))
@@ -59,7 +58,8 @@
 ;; override
 (defun org-sync-gitlab-fetch-buglist (last-update)
   "Return the buglist at org-sync-base-url."
-  ;;TODO implement org-sync-gitlab-fetch-buglist
+  ;;TODO implement SINCE
+  ;;TODO get name for task list from url 
   (let
       ((jsonBugs (org-sync-gitlab-request
 	      "GET"

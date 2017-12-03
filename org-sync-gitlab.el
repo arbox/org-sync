@@ -50,10 +50,14 @@
 ;; override
 (defun org-sync-gitlab-base-url (url)
   "Return base URL."
-  (string-match (concat  org-sync-gitlab-domain "/\\([^/]+\\)/\\([^/]+\\)/?$")  url)
-  (concat "https://" org-sync-gitlab-domain "/api/v4/projects/"
-           (match-string 1 url) "%2F" (match-string 2 url) "/" ))
+  url)
 
+(defun org-sync-gitlab-api-url ()
+  "Gets the api url from the base-url"
+  (let ((url org-sync-base-url))
+    (string-match (concat  org-sync-gitlab-domain "/\\([^/]+\\)/\\([^/]+\\)/?$")  url)
+    (concat "https://" org-sync-gitlab-domain "/api/v4/projects/"
+	    (match-string 1 url) "%2F" (match-string 2 url) "/" )))
 
 ;; override
 (defun org-sync-gitlab-fetch-buglist (last-update)
@@ -63,7 +67,7 @@
   (let
       ((jsonBugs (org-sync-gitlab-request
 	      "GET"
-	      (concat org-sync-base-url "issues?per_page=100"))))
+	      (concat (org-sync-gitlab-api-url) "issues?per_page=100"))))
   `(:title "Tasks"
 	   :url ,org-sync-base-url
 	   :bugs ,(mapcar 'org-sync-gitlab-json-to-bug jsonBugs)

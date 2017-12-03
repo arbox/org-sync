@@ -82,9 +82,34 @@
 
 ;; override
 (defun org-sync-gitlab-send-buglist (buglist)
-  "Send a  BUGLIST to the bugtracker and return new bugs"
+  "Send a  BUGLIST to the git lab and return updated BUGLIST."
   ;;TODO impliment org-sync-gitlab-send-buglist
-  nil)
+  (org-sync-get-prop :bugs buglist)
+  (dolist (b (org-sync-get-prop :bugs buglist))
+    b
+    (cond
+      ;; new bug (no id)
+      ((null (org-sync-get-prop :id b))
+	       (org-sync-gitlab-request
+		"POST"
+		(concat (org-sync-gitlab-api-url)
+			"/issues/" ;; (org-sync-get-prop :id b )
+			"?title="   (url-hexify-string (org-sync-get-prop :title b))
+			"&description=" (url-hexify-string (org-sync-get-prop :desc b)))))
+
+      ;; delete bug
+      ((org-sync-get-prop :delete b)
+        '(nil))
+
+      ;; else, modified bug
+      (t
+       '(nil))))
+  ;;brute force update bugs
+  ;;TODO be smarter and only show updated bugs
+  (org-sync-gitlab-fetch-bugs (org-sync-get-prop :since
+						 buglist))
+  )
+
 
 (defun org-sync-gitlab-json-to-bug (data)
   "Convert the provided Json DATA into a bug."

@@ -163,6 +163,8 @@
 (defvar org-sync-backend-alist
   '(("github.com/\\(?:repos/\\)?[^/]+/[^/]+" . org-sync-github-backend)
     ("bitbucket.org/[^/]+/[^/]+"             . org-sync-bb-backend)
+    ;;TODO make this use the org-sync-gitlab-domain
+    ("gitlab.com"                            . org-sync-gitlab-backend)
     ("/projects/[^/]+"                       . org-sync-rmine-backend)
     ("rememberthemilk.com"                   . org-sync-rtm-backend))
   "Alist of url patterns and corresponding org-sync backends.")

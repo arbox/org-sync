@@ -83,7 +83,6 @@
 ;; override
 (defun org-sync-gitlab-send-buglist (buglist)
   "Send a  BUGLIST to the git lab and return updated BUGLIST."
-  ;;TODO impliment org-sync-gitlab-send-buglist
   (dolist (b (org-sync-get-prop :bugs buglist))
     (let*
 	(
@@ -91,6 +90,10 @@
 	 (escapedTitle (url-hexify-string (org-sync-get-prop :title b)))
 	 (escapedDesc (url-hexify-string (org-sync-get-prop :desc b)))
 	 (issuePath (concat "/issues/" (if id (number-to-string id ))))
+	 (issueDataQueryString (concat
+				"?title="   escapedTitle
+				"&description=" escapedDesc
+				))
 	 )
       (cond
        ;; new bug (no id)
@@ -99,8 +102,7 @@
 	 "POST"
 	 (concat (org-sync-gitlab-api-url)
 		 issuePath
-		 "?title="   escapedTitle
-		 "&description=" escapedDesc)))
+		 issueDataQueryString)))
 
        ;; delete bug
        ((org-sync-get-prop :delete b)
@@ -112,7 +114,13 @@
 
        ;; else, modified bug
        (t
-	'(nil)))))
+	(org-sync-gitlab-request
+	 "PUT"
+	 (concat (org-sync-gitlab-api-url)
+		 issuePath
+		 issueDataQueryString))))
+      )
+    )
   ;;brute force update bugs
   ;;TODO be smarter and only show updated bugs
   `(:bugs ,(org-sync-gitlab-fetch-bugs (org-sync-get-prop :since

@@ -22,13 +22,17 @@
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ;;
 ;;; Commentary:
-;; This package implements a backend for org-sync to synchnonize
+;; This package implements a gitlab backend for org-sync to synchnonize
 ;; issues from a bitbucket repo with an org-mode buffer.  Read
 ;; Org-sync documentation for more information about it.
 ;;
 ;; This backend only supports basic synchronization for now.
 ;; Components, versions and milestones are ignored.
 ;;
+;; You must set the org-sync-gitlab-auth-token before you can sync.
+;;
+;; If you are not using 'gitlab.com' you can change the domain with
+;; org-sync-gitlab-domain
 ;;; Code:
 
 

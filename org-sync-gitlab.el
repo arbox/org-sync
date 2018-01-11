@@ -72,9 +72,9 @@
   "Gets the api url from the base-url"
   (let ((url org-sync-base-url))
     (let ((fqdn (org-sync-fqdn-from-url url)))
-    (string-match (concat fqdn "/\\([^/]+\\)/\\([^/]+\\)/?$") url)
-    (concat "https://" fqdn "/api/v4/projects/"
-	    (match-string 1 url) "%2F" (match-string 2 url) "/" ))))
+      (string-match (concat fqdn "/\\([^/]+\\)/\\([^/]+\\)/?$") url)
+      (concat "https://" fqdn "/api/v4/projects/"
+              (match-string 1 url) "%2F" (match-string 2 url) "/" ))))
 
 ;; override
 (defun org-sync-gitlab-fetch-buglist (last-update)
@@ -82,17 +82,17 @@
   ;;TODO implement SINCE
   ;;TODO get name for task list from url 
   `(:title "Tasks"
-	   :url ,org-sync-base-url
-	   :bugs ,(org-sync-gitlab-fetch-bugs last-update)
-	   ))
+           :url ,org-sync-base-url
+           :bugs ,(org-sync-gitlab-fetch-bugs last-update)
+           ))
 
 (defun org-sync-gitlab-fetch-bugs (last-update)
   "Return the json bugs."
   ;;TODO impliment LAST-UPDATE
   (let
       ((jsonBugs (org-sync-gitlab-request
-		  "GET"
-		  (concat (org-sync-gitlab-api-url) "issues?per_page=100"))))
+                  "GET"
+                  (concat (org-sync-gitlab-api-url) "issues?per_page=100"))))
     (mapcar 'org-sync-gitlab-json-to-bug jsonBugs)
     )
   )
@@ -102,46 +102,46 @@
   "Send a  BUGLIST to the git lab and return updated BUGLIST."
   (dolist (b (org-sync-get-prop :bugs buglist))
     (let*
-	(
-	 (id (org-sync-get-prop :id b))
-	 (escapedTitle (url-hexify-string (org-sync-get-prop :title b)))
-	 (escapedDesc (url-hexify-string (org-sync-get-prop :desc b)))
-	 (issuePath (concat "/issues/" (if id (number-to-string id ))))
-	 (issueDataQueryString (concat
-				"?title="   escapedTitle
-				"&description=" escapedDesc
-				))
-	 )
+        (
+         (id (org-sync-get-prop :id b))
+         (escapedTitle (url-hexify-string (org-sync-get-prop :title b)))
+         (escapedDesc (url-hexify-string (org-sync-get-prop :desc b)))
+         (issuePath (concat "/issues/" (if id (number-to-string id ))))
+         (issueDataQueryString (concat
+                                "?title="   escapedTitle
+                                "&description=" escapedDesc
+                                ))
+         )
       (cond
        ;; new bug (no id)
        ((null id)
-	(org-sync-gitlab-request
-	 "POST"
-	 (concat (org-sync-gitlab-api-url)
-		 issuePath
-		 issueDataQueryString)))
+        (org-sync-gitlab-request
+         "POST"
+         (concat (org-sync-gitlab-api-url)
+                 issuePath
+                 issueDataQueryString)))
 
        ;; delete bug
        ((org-sync-get-prop :delete b)
-	(org-sync-gitlab-request
-	 "DELETE"
-	 (concat (org-sync-gitlab-api-url)
-		 issuePath
-		 )))
+        (org-sync-gitlab-request
+         "DELETE"
+         (concat (org-sync-gitlab-api-url)
+                 issuePath
+                 )))
 
        ;; else, modified bug
        (t
-	(org-sync-gitlab-request
-	 "PUT"
-	 (concat (org-sync-gitlab-api-url)
-		 issuePath
-		 issueDataQueryString))))
+        (org-sync-gitlab-request
+         "PUT"
+         (concat (org-sync-gitlab-api-url)
+                 issuePath
+                 issueDataQueryString))))
       )
     )
   ;;brute force update bugs
   ;;TODO be smarter and only show updated bugs
   `(:bugs ,(org-sync-gitlab-fetch-bugs (org-sync-get-prop :since
-					       buglist)))
+                                                          buglist)))
   )
 
 
@@ -149,13 +149,13 @@
   "Convert the provided Json DATA into a bug."
   `(
     :id ,(assoc-default `iid  data) ;; iid is the internal issue id, used for updating
-	:title ,(assoc-default `title data)
-	:status, (if (string= (assoc-default `state data) "opened") 'open 'closed)
-	:date-creation ,(org-sync-parse-date (assoc-default 'created_at data))
-	:deadline ,(org-sync-parse-date (assoc-default 'due_date data))
-	:date-modification ,(org-sync-parse-date (assoc-default 'updated_at data))
-	:web-url ,(assoc-default 'web_url data)
-	:desc, (assoc-default `description data)))
+        :title ,(assoc-default `title data)
+        :status, (if (string= (assoc-default `state data) "opened") 'open 'closed)
+        :date-creation ,(org-sync-parse-date (assoc-default 'created_at data))
+        :deadline ,(org-sync-parse-date (assoc-default 'due_date data))
+        :date-modification ,(org-sync-parse-date (assoc-default 'updated_at data))
+        :web-url ,(assoc-default 'web_url data)
+        :desc, (assoc-default `description data)))
 
 
 (defun org-sync-gitlab-request (method url &optional data)
@@ -163,18 +163,18 @@
 Return a JSON response"
   (let* ((url-request-method method)
          (url-request-data data)
-	 (url-request-extra-headers `(( "Private-Token".  ,(org-sync-gitlab-get-auth-token))))
-	 )
+         (url-request-extra-headers `(( "Private-Token".  ,(org-sync-gitlab-get-auth-token))))
+         )
     (message "%s %s %s" method url (prin1-to-string data))
     (with-current-buffer (url-retrieve-synchronously url)
       (goto-char url-http-end-of-headers)
       (prog1
-	  (if
-	      (not (string-equal method "DELETE" ))
-	      (json-read)
-	    )
-	(kill-buffer)
-	))))
+          (if
+              (not (string-equal method "DELETE" ))
+              (json-read)
+            )
+        (kill-buffer)
+        ))))
 
 (defun org-sync-gitlab-get-auth-token ()
   "Gets the private-token."

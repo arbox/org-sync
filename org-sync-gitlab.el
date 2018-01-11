@@ -32,6 +32,16 @@
 ;;
 ;; You must set the org-sync-gitlab-auth-token before you can sync.
 ;;
+;; The org-sync backend list (org-sync-backend-alist) is setup per
+;; default to associate any URL containing 'gitlab' with the gitlab
+;; backend, including both the public gitlab.com but also a private
+;; gitlab instance as long as 'gitlab' is in the URL. If you are using a
+;; private GitLab instance that does not include 'gitlab' in the URL,
+;; you can add an entry to org-sync-backend-alist to forcibly associate
+;; the FQDN of your instance with the gitlab backend:
+;;
+;; (add-to-list 'org-sync-backend-alist (cons "private-instance.example.com" 'org-sync-gitlab-backend))
+;;
 ;;; Code:
 
 

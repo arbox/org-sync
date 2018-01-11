@@ -107,9 +107,11 @@
          (escapedTitle (url-hexify-string (org-sync-get-prop :title b)))
          (escapedDesc (url-hexify-string (org-sync-get-prop :desc b)))
          (issuePath (concat "/issues/" (if id (number-to-string id ))))
+         (state_event (if (string-equal (org-sync-get-prop :status b) "open") "reopen" "close"))
          (issueDataQueryString (concat
                                 "?title="   escapedTitle
                                 "&description=" escapedDesc
+                                "&state_event=" state_event
                                 ))
          )
       (cond

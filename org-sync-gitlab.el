@@ -22,6 +22,7 @@
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ;;
 ;;; Commentary:
+;;
 ;; This package implements a gitlab backend for org-sync to synchnonize
 ;; issues from a bitbucket repo with an org-mode buffer.  Read
 ;; Org-sync documentation for more information about it.
@@ -31,8 +32,6 @@
 ;;
 ;; You must set the org-sync-gitlab-auth-token before you can sync.
 ;;
-;; If you are not using 'gitlab.com' you can change the domain with
-;; org-sync-gitlab-domain
 ;;; Code:
 
 
@@ -47,21 +46,25 @@
     (send-buglist  . org-sync-gitlab-send-buglist))
   "Gitlab backend.")
 
-(defvar org-sync-gitlab-domain
-  "gitlab.com"
-  "The domain for gitlab.")
-
-;; override
 (defun org-sync-gitlab-base-url (url)
   "Return base URL."
+  ;; if no url type, try https
+  (when (not (string-match "^https?://" url))
+    (setq url (concat "https://" url)))
   url)
+
+(defun org-sync-fqdn-from-url (url)
+  "Return FQDN part from a URL, effectively stripping leading https:// and the path of the URL"
+  (string-match "/\\([^/]+\\)/?" url)
+  (match-string 1 url))
 
 (defun org-sync-gitlab-api-url ()
   "Gets the api url from the base-url"
   (let ((url org-sync-base-url))
-    (string-match (concat  org-sync-gitlab-domain "/\\([^/]+\\)/\\([^/]+\\)/?$")  url)
-    (concat "https://" org-sync-gitlab-domain "/api/v4/projects/"
-	    (match-string 1 url) "%2F" (match-string 2 url) "/" )))
+    (let ((fqdn (org-sync-fqdn-from-url url)))
+    (string-match (concat fqdn "/\\([^/]+\\)/\\([^/]+\\)/?$") url)
+    (concat "https://" fqdn "/api/v4/projects/"
+	    (match-string 1 url) "%2F" (match-string 2 url) "/" ))))
 
 ;; override
 (defun org-sync-gitlab-fetch-buglist (last-update)

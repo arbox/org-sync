@@ -156,6 +156,7 @@
         :date-creation ,(org-sync-parse-date (assoc-default 'created_at data))
         :date-modification ,(org-sync-parse-date (assoc-default 'updated_at data))
         :web-url ,(assoc-default 'web_url data)
+        :weight ,(assoc-default 'weight data)
         :desc, (assoc-default `description data)))
 
 

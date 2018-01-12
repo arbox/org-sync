@@ -154,7 +154,6 @@
         :title ,(assoc-default `title data)
         :status, (if (string= (assoc-default `state data) "opened") 'open 'closed)
         :date-creation ,(org-sync-parse-date (assoc-default 'created_at data))
-        :deadline ,(org-sync-parse-date (assoc-default 'due_date data))
         :date-modification ,(org-sync-parse-date (assoc-default 'updated_at data))
         :web-url ,(assoc-default 'web_url data)
         :desc, (assoc-default `description data)))

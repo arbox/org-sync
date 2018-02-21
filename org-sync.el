@@ -163,6 +163,9 @@
 (defvar org-sync-backend-alist
   '(("github.com/\\(?:repos/\\)?[^/]+/[^/]+" . org-sync-github-backend)
     ("bitbucket.org/[^/]+/[^/]+"             . org-sync-bb-backend)
+    ;; generic match on gitlab in the URL, we can be fairly certain it's a gitlab instance
+    ("gitlab"                                . org-sync-gitlab-backend)
+    ;;TODO make this use the org-sync-gitlab-domain
     ("/projects/[^/]+"                       . org-sync-rmine-backend)
     ("rememberthemilk.com"                   . org-sync-rtm-backend))
   "Alist of url patterns and corresponding org-sync backends.")
@@ -648,7 +651,9 @@ The value returned is a list of duplicated ids."
         (dups))
     (mapc (lambda (x)
             (let ((id (org-sync-get-prop :id x)))
-              (puthash id (1+ (gethash id hash 0)) hash)))
+              (if (not (null id))
+                  (puthash id (1+ (gethash id hash 0)) hash)))
+            )
           (org-sync-get-prop :bugs buglist))
     (maphash (lambda (id nb)
                (when (> nb 1)

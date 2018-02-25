@@ -452,7 +452,7 @@ Return ELEM if it was added, nil otherwise."
    (stringp (org-sync-headline-url elem))))
 
 (defun org-sync-property-drawer-to-alist (drawer)
-  "Return the alist of all key value pairs."
+  "Find the PROPERTIES drawer and return all key value pairs as an alist."
   (org-element-map drawer
                    'node-property
                    (lambda (x) (cons (org-element-property :key x)
@@ -501,9 +501,7 @@ Return ELEM if it was added, nil otherwise."
          (title (car (org-element-property :title h)))
          (section (org-element-contents (car (org-element-contents h))))
          (headline-alist (org-sync-property-drawer-to-alist
-                          (car
-                           (org-element-contents
-                            (car (org-element-contents h))))))
+                          (car (org-element-contents h))))
          (ctime (org-sync-parse-date (cdr (assoc "date-creation" headline-alist))))
          (mtime (org-sync-parse-date (cdr (assoc "date-modification" headline-alist))))
          desc

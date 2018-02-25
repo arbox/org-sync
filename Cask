@@ -7,6 +7,7 @@
        "org-sync.el"
        "org-sync-bb.el"
        "org-sync-github.el"
+       "org-sync-gitlab.el"
        "org-sync-redmine.el"
        "org-sync-rtm.el")
 

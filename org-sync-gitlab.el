@@ -99,29 +99,27 @@
 
 ;; override
 (defun org-sync-gitlab-send-buglist (buglist)
-  "Send a  BUGLIST to the git lab and return updated BUGLIST."
+  "Send a BUGLIST to gitlab and return updated BUGLIST."
   (dolist (b (org-sync-get-prop :bugs buglist))
     (let*
         (
          (id (org-sync-get-prop :id b))
-         (escapedTitle (url-hexify-string (org-sync-get-prop :title b)))
-         (escapedDesc (url-hexify-string (org-sync-get-prop :desc b)))
-         (issuePath (concat "/issues/" (if id (number-to-string id ))))
+         (issuePath (concat "issues/" (if id (number-to-string id ))))
          (state_event (if (string= (org-sync-get-prop :status b) 'open) "reopen" "close"))
-         (issueDataQueryString (concat
-                                "?title="   escapedTitle
-                                "&description=" escapedDesc
-                                "&state_event=" state_event
-                                ))
+         (issueDataJson (json-encode `((title . ,(org-sync-get-prop :title b))
+                                       (description . ,(org-sync-get-prop :desc b))
+                                       (state_event . ,state_event)
+                                       )))
          )
       (cond
        ;; new bug (no id)
        ((null id)
-        (org-sync-gitlab-request
+        (org-sync-gitlab-request-json
          "POST"
          (concat (org-sync-gitlab-api-url)
-                 issuePath
-                 issueDataQueryString)))
+                 issuePath)
+         issueDataJson
+         '(("Content-Type" . "application/json"))))
 
        ;; delete bug
        ((org-sync-get-prop :delete b)
@@ -136,8 +134,9 @@
         (org-sync-gitlab-request
          "PUT"
          (concat (org-sync-gitlab-api-url)
-                 issuePath
-                 issueDataQueryString))))
+                 issuePath)
+         issueDataJson
+         '(("Content-Type" . "application/json")))))
       )
     )
   ;;brute force update bugs
@@ -160,12 +159,15 @@
         :desc, (assoc-default `description data)))
 
 
-(defun org-sync-gitlab-request (method url &optional data)
+(defun org-sync-gitlab-request (method url &optional data extra-headers)
   "Sends HTTP request at URL using METHOD with DATA
 Return a JSON response"
+  ;; TODO implement error handling - we have to check we get 200 OK back from
+  ;; server before trying to parse
   (let* ((url-request-method method)
          (url-request-data data)
-         (url-request-extra-headers `(( "Private-Token".  ,(org-sync-gitlab-get-auth-token))))
+         (url-request-extra-headers (append `(("Private-Token" .  ,(org-sync-gitlab-get-auth-token)))
+                                            extra-headers))
          )
     (message "%s %s %s" method url (prin1-to-string data))
     (with-current-buffer (url-retrieve-synchronously url)

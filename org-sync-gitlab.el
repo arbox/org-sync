@@ -164,15 +164,20 @@
 (defun org-sync-gitlab-request (method url &optional data extra-headers)
   "Sends HTTP request at URL using METHOD with DATA
 Return a JSON response"
-  ;; TODO implement error handling - we have to check we get 200 OK back from
-  ;; server before trying to parse
   (let* ((url-request-method method)
          (url-request-data data)
          (url-request-extra-headers (append `(("Private-Token" .  ,(org-sync-gitlab-get-auth-token)))
                                             extra-headers))
          )
     (message "%s %s %s" method url (prin1-to-string data))
+    ;; first line is like 'HTTP/1.1 200 OK' so we move forward to capture the
+    ;; status code and make sure it is 200
     (with-current-buffer (url-retrieve-synchronously url)
+      (beginning-of-buffer)
+      (search-forward " ")
+      (setq http-code (thing-at-point 'word 'no-properties))
+      (if (not (string-equal http-code "200"))
+          (error "Didn't get 200 OK for HTTP request"))
       (goto-char url-http-end-of-headers)
       (prog1
           (if

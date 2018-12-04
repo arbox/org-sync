@@ -1,10 +1,10 @@
-;;; org-sync-gitlab --- Gitalab backend for org-sync
+;;; org-sync-gitlab --- Gitlab backend for org-sync
 ;;
 ;; Copyright (C) 2017  Yisrael Dov Lebow
 ;;
 ;; Author:  Yisrael Dov Lebow <lebow at lebowtech dot com>
 ;; Keywords: org, gitlab, synchronization
-;; Homepage: https://github.com/yisraeldov/org-sync
+;; Homepage: https://github.com/arbox/org-sync
 ;;
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -23,22 +23,24 @@
 ;;
 ;;; Commentary:
 ;;
-;; This package implements a gitlab backend for org-sync to synchnonize
-;; issues from a bitbucket repo with an org-mode buffer.  Read
-;; Org-sync documentation for more information about it.
+;; This package implements a gitlab backend for org-sync to synchronize issues
+;; from a Gitlab repo with an org-mode buffer. Read Org-sync documentation for
+;; more information about it.
 ;;
-;; This backend only supports basic synchronization for now.
-;; Components, versions and milestones are ignored.
+;; This backend only supports basic synchronization for now. Components,
+;; versions, tags and milestones are ignored.
 ;;
 ;; You must set the org-sync-gitlab-auth-token before you can sync.
 ;;
-;; The org-sync backend list (org-sync-backend-alist) is setup per
-;; default to associate any URL containing 'gitlab' with the gitlab
-;; backend, including both the public gitlab.com but also a private
-;; gitlab instance as long as 'gitlab' is in the URL. If you are using a
-;; private GitLab instance that does not include 'gitlab' in the URL,
-;; you can add an entry to org-sync-backend-alist to forcibly associate
-;; the FQDN of your instance with the gitlab backend:
+;; Specify the URL to your project, for example: https://gitlab.com/group/project
+;; Do not include any ending like /issues or similar.
+;;
+;; The org-sync backend list (org-sync-backend-alist) is setup per default to
+;; associate any URL containing 'gitlab' with the gitlab backend, matching both
+;; the public gitlab.com but also a private gitlab instance as long as 'gitlab'
+;; is in the URL. If you are using a private GitLab instance that does not
+;; include 'gitlab' in the URL, you can add an entry to org-sync-backend-alist
+;; to forcibly associate the FQDN of your instance with the gitlab backend:
 ;;
 ;; (add-to-list 'org-sync-backend-alist (cons "private-instance.example.com" 'org-sync-gitlab-backend))
 ;;

@@ -50,6 +50,7 @@
 (eval-when-compile (require 'cl))
 (require 'org-sync)
 (require 'url)
+(require 'url-parse)
 (require 'json)
 
 (defvar org-sync-gitlab-backend
@@ -71,12 +72,17 @@
   (match-string 1 url))
 
 (defun org-sync-gitlab-api-url ()
-  "Gets the api url from the base-url"
-  (let ((url org-sync-base-url))
-    (let ((fqdn (org-sync-fqdn-from-url url)))
-      (string-match (concat fqdn "/\\([^/]+\\)/\\([^/]+\\)/?$") url)
-      (concat "https://" fqdn "/api/v4/projects/"
-              (match-string 1 url) "%2F" (match-string 2 url) "/" ))))
+  "Gets the api url from the base-url."
+   (let* ((url (url-generic-parse-url org-sync-base-url ))
+         (fqdn (url-host url))
+         (path (split-string (substring (url-filename url) 1) "/"))
+         (project (first (last path)))
+         (groups (butlast path)))
+      (format "https://%s/api/v4/projects/%s%s%s/"
+              fqdn
+              (mapconcat 'identity groups "%2F")
+              "%2F"
+              project)))
 
 ;; override
 (defun org-sync-gitlab-fetch-buglist (last-update)

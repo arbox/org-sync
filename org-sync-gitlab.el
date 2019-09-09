@@ -116,7 +116,7 @@
       (cond
        ;; new bug (no id)
        ((null id)
-        (org-sync-gitlab-request-json
+        (org-sync-gitlab-request
          "POST"
          (concat (org-sync-gitlab-api-url)
                  issuePath)

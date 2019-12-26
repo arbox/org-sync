@@ -345,22 +345,56 @@ Return ELEM if it was added, nil otherwise."
                    (url-hexify-string (cdr p))))
                 final "&"))))
 
-;; OPEN bugs sorted by mod time then CLOSED bugs sorted by mod time
+
+;; KEY is a function returning alist of tuples of (value, =value, <value) so they can be compared later
+;; E.g.
+;; (defun human-key (human)
+;;    `(
+;;      (,(get-age  human) . (=       . <))
+;;      (,(get-name human) . (string= . string <))))
+;; compares people by age first, and in case of parity uses lexicographical name comparison
+
+(defun key-to-comparator (key)
+  "Converts KEY function in a sort-compatible 'less than' predicate"
+  (defvar --key-to-comparator-key key)
+  (lambda (a b)
+    (let* ((key --key-to-comparator-key)
+           (cka (funcall key a))
+           (ckb (funcall key b))
+           (ka  (mapcar 'car  cka))
+           (keq (mapcar 'cadr cka))
+           (klt (mapcar 'cddr cka))
+           (kb  (mapcar 'car  ckb))
+           (ords (cl-mapcar
+                  (lambda (eq lt a b)
+                    (if (funcall eq a b)
+                        :eq
+                      (if (funcall lt a b)
+                          :lt
+                        :gt)))
+                  keq klt ka kb)))
+      (eq :lt ;; result is the first key tuple element that is not :eq
+          (car (seq-drop-while (lambda (x) (eq x :eq)) ords))))))
+
+
+(defun org-sync-cmp-key (i)
+  "Sorts issues:
+- from open to closed
+- then from most recently to least recently modified
+- then by issue ID"
+  (let* ((open (equal 'open (org-sync-get-prop :status i)))
+         (dmod (org-sync-get-prop :date-modification i))
+         (ts   (if dmod (float-time dmod) 0))
+         (id   (or (org-sync-get-prop :id i) -1)))
+    `(
+      (,(if open 0 1) . (= . <))
+      (,ts            . (= . >))
+      (,id            . (= . <)))))
+
+
 (defun org-sync-bug-sort (a b)
-  "Return non-nil if bug A should appear before bug B."
-  (cl-flet ((time-less-safe (a b)
-                            (if (and a b)
-                                (time-less-p a b)
-                              (or a b))))
-    (let* ((ao (eq 'open (org-sync-get-prop :status a)))
-           (bc (not (eq 'open (org-sync-get-prop :status b))))
-           (am (time-less-safe
-                (org-sync-get-prop :date-modification b)
-                (org-sync-get-prop :date-modification a))))
-      (or
-       (and ao am)
-       (and bc am)
-       (and ao bc)))))
+  (funcall (key-to-comparator 'org-sync-cmp-key) a b))
+
 
 (defun org-sync-buglist-to-element (bl)
   "Return buglist BL as an element."

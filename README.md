@@ -55,6 +55,8 @@ user/password to be able to modify the issue remotely.
 Set the variable org-sync-github-auth to like so:
 `(setq org-sync-github-auth '("ostesting" . "thisisostesting42"))`
 
+Make sure to use [personal access token](https://github.com/settings/tokens) instead of password; it's more secure, and also necessary if you use 2FA.
+
 Try to add another issue e.g. insert `** OPEN my test issue`.  You can
 type a description under it if you want.
 
